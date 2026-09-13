@@ -5,4 +5,4 @@ __pycache__/
 temp_*
 .env
 firebase_credentials.json
-EOF
+EOFvenv/
