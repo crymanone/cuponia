@@ -43,7 +43,7 @@ async def get_current_user(authorization: str = Header(...)):
         raise HTTPException(status_code=401, detail="Sesión expirada")
 
 # ==============================================================================
-# ASSETS PWA Y GOOGLE PLAY (ASSETLINKS DIGITALES)
+# ASSETS PWA Y GOOGLE PLAY (ASSETLINKS DIGITALES CON FIRMA OFICIAL)
 # ==============================================================================
 @app.get("/manifest.json")
 async def get_manifest():
@@ -73,6 +73,7 @@ async def privacy():
     </body></html>
     """
 
+# APRETÓN DE MANOS OFICIAL GOOGLE PLAY (CON TU HUELLA SHA-256 REAL)
 @app.get("/.well-known/assetlinks.json")
 async def asset_links():
     return JSONResponse(content=[{
@@ -81,13 +82,13 @@ async def asset_links():
             "namespace": "android_app",
             "package_name": "com.cuponia.app",
             "sha256_cert_fingerprints": [
-                "99:24:72:3C:D0:B6:2D:50:F3:4A:85:DB:7F:D4:9A:55:F5:22:2C:3A:C7:EE:1E:07:62:4C:30:33:36:33:53:C4"
+                "6C:5A:00:89:10:3F:70:99:22:B8:06:13:C3:53:BE:D6:F1:04:BD:0C:EE:E1:69:91:70:4A:C6:AD:11:F6:C9:41"
             ]
         }
     }])
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (CON INTERRUPTOR DE PRUEBAS FREE/PREMIUM)
+# FRONTEND INTERACTIVO (PWA CON PASARELA CONECTADA)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -112,7 +113,6 @@ async def home():
             #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%; text-align: center; }
             .login-btn { background: white; color: #444; border: 1px solid #ddd; padding: 15px 30px; border-radius: 50px; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
             
-            /* Header Usuario Flotante */
             #user-info { position: absolute; top: 15px; right: 15px; z-index: 100; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.95); padding: 5px 12px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); backdrop-filter: blur(5px); }
             .user-name { font-size: 12px; font-weight: 600; color: #37474f; }
             .badge-plan { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 800; cursor: pointer; }
@@ -148,7 +148,6 @@ async def home():
             .tag-ok { background: #e8f5e9; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             .tag-expired { background: #eeeeee; color: #9e9e9e; text-decoration: line-through; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             
-            /* Lista de la compra */
             .shopping-input-box { display: flex; gap: 8px; margin-bottom: 15px; align-items: center; }
             .shopping-input { flex: 1; padding: 14px 16px; border: 2px solid #b2dfdb; border-radius: 12px; font-size: 15px; outline: none; font-weight: 600; box-sizing: border-box; }
             .btn-mic { width: 50px; height: 50px; border-radius: 12px; background: var(--primary-light); color: white; border: none; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
@@ -286,7 +285,6 @@ async def home():
                     <div style="font-size:18px; font-weight:bold; color:#004d40; margin-top:4px;">1,99 € <span style="font-size:12px; font-weight:normal; color:#666;">/ mes</span></div>
                 </div>
 
-                <!-- BOTÓN DE DESARROLLADOR / RESTABLECER A FREE -->
                 <button class="btn" style="background:#ffebee; color:#c62828; margin-top:10px; font-size:12px; padding:10px;" onclick="cancelarSuscripcionTest()">🔄 Restablecer cuenta a Free (Modo Test)</button>
                 <button class="btn" style="background:#eee; color:#444; margin-top:6px; font-size:12px; padding:10px;" onclick="cerrarPaywall()">Volver</button>
             </div>
@@ -394,7 +392,6 @@ async def home():
             window.abrirPaywall = () => document.getElementById('paywallModal').style.display = 'flex';
             window.cerrarPaywall = () => document.getElementById('paywallModal').style.display = 'none';
 
-            // RESTABLECER A FREE (MODO TEST)
             window.cancelarSuscripcionTest = async () => {
                 if (confirm("¿Quieres volver a la versión Free para probar los límites?")) {
                     await authFetch('/usuario/cancelar', { method: 'POST' });
@@ -405,7 +402,7 @@ async def home():
                 }
             };
 
-            // PASARELA DE PAGO CON DIAGNÓSTICO EN VIVO
+            // PASARELA OFICIAL DE PAGO
             window.suscribirse = async (plan) => {
                 const productId = plan === 'anual' ? 'cuponia_premium_anual' : 'cuponia_premium_mensual';
                 const price = plan === 'anual' ? '14.99' : '1.99';
@@ -415,7 +412,7 @@ async def home():
                         const service = await window.getDigitalGoodsService("https://play.google.com/billing");
                         const details = await service.getDetails([productId]);
                         if (!details || details.length === 0) {
-                            throw new Error(`Google Play aún no tiene activo el producto '${productId}'. Comprueba que esté activado en la Play Console.`);
+                            throw new Error(`Google Play aún no tiene activo el producto '${productId}'.`);
                         }
 
                         const paymentMethodData = [{
@@ -704,7 +701,7 @@ async def home():
                 }
             };
 
-            // CÁMARA IN-APP WEBRTC CON COMPRESIÓN
+            // CÁMARA IN-APP WEBRTC
             let cameraStream = null;
             let torchActive = false;
 
@@ -845,7 +842,6 @@ async def suscribir_usuario(data: dict = Body(...), user_id: str = Depends(get_c
     database.activar_suscripcion_db(user_id, plan=plan)
     return {"ok": True}
 
-# ENDPOINT PARA VOLVER A FREE EN PRUEBAS
 @app.post("/usuario/cancelar")
 async def cancelar_sub(user_id: str = Depends(get_current_user)):
     database.cancelar_suscripcion_db(user_id)
