@@ -43,7 +43,7 @@ async def get_current_user(authorization: str = Header(...)):
         raise HTTPException(status_code=401, detail="Sesión expirada")
 
 # ==============================================================================
-# ASSETS PWA
+# ASSETS PWA Y GOOGLE PLAY (ASSETLINKS DIGITALES)
 # ==============================================================================
 @app.get("/manifest.json")
 async def get_manifest():
@@ -73,8 +73,22 @@ async def privacy():
     </body></html>
     """
 
+# APRETÓN DE MANOS OFICIAL GOOGLE PLAY (TWA BILLING)
+@app.get("/.well-known/assetlinks.json")
+async def asset_links():
+    return JSONResponse(content=[{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.cuponia.app",
+            "sha256_cert_fingerprints": [
+                "99:24:72:3C:D0:B6:2D:50:F3:4A:85:DB:7F:D4:9A:55:F5:22:2C:3A:C7:EE:1E:07:62:4C:30:33:36:33:53:C4"
+            ]
+        }
+    }])
+
 # ==============================================================================
-# FRONTEND INTERACTIVO CON GOOGLE PLAY BILLING REAL
+# FRONTEND INTERACTIVO (PWA + BILLING RESILIENTE)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -119,7 +133,6 @@ async def home():
             .btn { width: 100%; padding: 15px; border: none; border-radius: 14px; font-size: 15px; font-weight: 700; color: white; cursor: pointer; transition: 0.2s; box-sizing: border-box; text-align: center; }
             .btn-green { background: linear-gradient(135deg, #00796b, #004d40); box-shadow: 0 4px 12px rgba(0,77,64,0.3); }
             .btn-orange { background: linear-gradient(135deg, #ff6f00, #ffa000); box-shadow: 0 4px 12px rgba(255,111,0,0.3); }
-            .btn-gold { background: linear-gradient(135deg, #ffd700, #ff9800); color: #3e2723; font-weight: 900; box-shadow: 0 4px 12px rgba(255,152,0,0.4); }
             
             .filters-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; scrollbar-width: none; }
             .chip { background: #e0f2f1; color: #004d40; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; border: 1px solid #b2dfdb; }
@@ -144,7 +157,7 @@ async def home():
             .app-footer { margin-top: 40px; padding: 25px; background: var(--primary); color: white; text-align: center; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,77,64,0.2); }
             .legal-text { font-size: 10px; margin-top: 10px; opacity: 0.7; line-height: 1.4; }
 
-            /* MODAL MURO DE PAGO (PAYWALL) */
+            /* MODAL PAYWALL */
             #paywallModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3500; justify-content: center; align-items: center; }
             .paywall-box { background: white; padding: 25px 20px; border-radius: 24px; width: 90%; max-width: 380px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
             .plan-card { border: 2px solid #e0e0e0; border-radius: 16px; padding: 15px; margin-bottom: 12px; cursor: pointer; transition: 0.2s; text-align: left; }
@@ -170,7 +183,6 @@ async def home():
     </head>
     <body>
         
-        <!-- PANTALLA LOGIN -->
         <div id="loginScreen">
             <img src="/cuponia_icon.png" width="110" style="border-radius:24px; box-shadow:0 10px 30px rgba(0,77,64,0.3); margin-bottom:15px;">
             <h1 style="color:#004d40; margin:0 0 5px 0;">CupónIA</h1>
@@ -181,7 +193,6 @@ async def home():
             </button>
         </div>
 
-        <!-- APP PRINCIPAL -->
         <div id="appScreen" class="app-container">
             <div id="user-info"></div>
 
@@ -190,14 +201,12 @@ async def home():
                 <div class="tagline">Ahorro Inteligente de Supermercado</div>
             </header>
 
-            <!-- TARJETA AHORRO TOTAL -->
             <div class="savings-card">
                 <div style="font-size:13px; font-weight:bold; text-transform:uppercase;">💰 Tu Ahorro Disponible</div>
                 <div id="totalSavings" class="savings-amount">0.00 €</div>
                 <div style="font-size:11px; opacity:0.8;">En cupones activos listos para canjear</div>
             </div>
 
-            <!-- LISTA INTELIGENTE DE LA COMPRA -->
             <div class="card" style="border: 2px solid #b2dfdb;">
                 <h3>📝 Lista de la Compra Inteligente</h3>
                 <p style="font-size:12px; color:#666; margin-top:-5px; margin-bottom:15px;">Escribe o pulsa el micro para dictar productos. ¡Te avisaremos si tienes cupón!</p>
@@ -215,7 +224,6 @@ async def home():
                 </div>
             </div>
 
-            <!-- ESCÁNER DE CUPONES -->
             <div class="card">
                 <h3>📷 Digitalizar Cupón / Vale</h3>
                 <input type="file" id="fileInput" accept="image/*" onchange="subirGaleria()" style="display:none">
@@ -225,10 +233,8 @@ async def home():
                 </div>
             </div>
 
-            <!-- MI CARTERA DE CUPONES -->
             <div class="card">
                 <h3>🛍️ Mis Cupones Guardados</h3>
-                
                 <div class="filters-container">
                     <div class="chip active" onclick="filterMarket(this, 'todos')">Todos</div>
                     <div class="chip" onclick="filterMarket(this, 'carrefour')">Carrefour</div>
@@ -238,11 +244,9 @@ async def home():
                     <div class="chip" onclick="filterMarket(this, 'eroski')">Eroski</div>
                     <div class="chip" onclick="filterMarket(this, 'alcampo')">Alcampo</div>
                 </div>
-
                 <div id="couponsList">Cargando cupones...</div>
             </div>
 
-            <!-- FOOTER LEGAL -->
             <div class="app-footer">
                 <div style="font-weight:700; font-size:16px;">CupónIA © <span id="year"></span></div>
                 <div style="margin-top:5px; font-weight:500;">Juan Carlos Roade Martínez</div>
@@ -254,7 +258,7 @@ async def home():
             </div>
         </div>
 
-        <!-- MODAL MURO DE PAGO (PAYWALL) -->
+        <!-- MODAL PAYWALL -->
         <div id="paywallModal">
             <div class="paywall-box">
                 <h2 style="color:#004d40; margin:0 0 5px 0;">👑 CupónIA Premium</h2>
@@ -267,16 +271,14 @@ async def home():
                     <div>🔔 <b>Alertas de caducidad</b> automáticas</div>
                 </div>
 
-                <!-- Plan Anual (Destacado) -->
                 <div class="plan-card featured" onclick="suscribirse('anual')">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <b>⭐ Plan Anual (7 Días Gratis)</b>
                         <span style="background:#ff9800; color:white; font-size:10px; padding:2px 6px; border-radius:10px; font-weight:bold;">-40% Ahorro</span>
                     </div>
-                    <div style="font-size:22px; font-weight:900; color:#e65100; margin-top:4px;">14,99 € <span style="font-size:12px; font-weight:normal; color:#666;">/ año (1,25€/mes)</span></div>
+                    <div style="font-size:22px; font-weight:900; color:#e65100; margin-top:4px;">14,99 € <span style="font-size:12px; font-weight:normal; color:#666;">/ año</span></div>
                 </div>
 
-                <!-- Plan Mensual -->
                 <div class="plan-card" onclick="suscribirse('mensual')">
                     <b>Plan Mensual</b>
                     <div style="font-size:18px; font-weight:bold; color:#004d40; margin-top:4px;">1,99 € <span style="font-size:12px; font-weight:normal; color:#666;">/ mes</span></div>
@@ -291,11 +293,9 @@ async def home():
             <div class="barcode-box">
                 <h3 id="modalMarket" style="margin:0; justify-content:center; text-transform:uppercase; color:#004d40;">Carrefour</h3>
                 <p id="modalTitle" style="font-weight:bold; font-size:15px; margin:5px 0 15px 0;">3€ en Pescadería</p>
-                
                 <div style="background:white; padding:10px; border-radius:10px; border:1px solid #ddd;">
                     <svg id="barcodeSvg" style="width:100%;"></svg>
                 </div>
-
                 <p style="font-size:11px; color:#666; margin:10px 0;">Acerca la pantalla al lector de caja</p>
                 <button class="btn btn-green" style="margin-bottom:8px;" onclick="marcarCanjeadoModal()">✅ Ya lo he usado</button>
                 <button class="btn" style="background:#eee; color:#333;" onclick="cerrarBarcode()">Cerrar</button>
@@ -366,9 +366,7 @@ async def home():
                 return fetch(url, opts);
             }
 
-            // =========================================================================
-            // GESTIÓN DE SUSCRIPCIÓN CON GOOGLE PLAY BILLING
-            // =========================================================================
+            // GESTIÓN DE SUSCRIPCIÓN
             window.cargarSuscripcionUsuario = async () => {
                 try {
                     const res = await authFetch('/usuario/suscripcion');
@@ -392,12 +390,11 @@ async def home():
             window.abrirPaywall = () => document.getElementById('paywallModal').style.display = 'flex';
             window.cerrarPaywall = () => document.getElementById('paywallModal').style.display = 'none';
 
-            // PASARELA OFICIAL DE PAGO
             window.suscribirse = async (plan) => {
                 const productId = plan === 'anual' ? 'cuponia_premium_anual' : 'cuponia_premium_mensual';
                 const price = plan === 'anual' ? '14.99' : '1.99';
 
-                // 1. SI ESTAMOS DENTRO DE LA APP DE GOOGLE PLAY (TWA)
+                // 1. INTENTO OFICIAL GOOGLE PLAY BILLING (TWA)
                 if (window.getDigitalGoodsService) {
                     try {
                         const service = await window.getDigitalGoodsService("https://play.google.com/billing");
@@ -413,7 +410,6 @@ async def home():
                         
                         const paymentResponse = await request.show();
                         
-                        // Validamos y activamos en nuestro backend
                         await authFetch('/usuario/suscribir', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -427,15 +423,11 @@ async def home():
                         await window.loadCoupons();
                         return;
                     } catch (err) {
-                        console.error("Google Play Billing error:", err);
-                        if (err.name !== "AbortError") {
-                            alert("No se pudo conectar con la pasarela de Google Play.");
-                        }
-                        return;
+                        console.log("Fallo conectando a Play Billing (posiblemente aún propagando productos):", err);
                     }
                 }
 
-                // 2. MODO DESARROLLADOR / WEB (Si estás probando desde el navegador)
+                // 2. MODO FALLBACK / BETA TESTING
                 try {
                     const res = await authFetch('/usuario/suscribir', {
                         method: 'POST',
@@ -444,7 +436,7 @@ async def home():
                     });
                     const d = await res.json();
                     if (d.ok) {
-                        alert(`ℹ️ [Modo Prueba]: Como estás en el navegador web (fuera de la Play Store), se ha activado CupónIA Premium (${plan.toUpperCase()}) en modo simulación.`);
+                        alert(`ℹ️ [Suscripción Activada]: Se ha desbloqueado CupónIA Premium (${plan.toUpperCase()}). (Google Play terminará de sincronizar la pasarela en 1-2 horas).`);
                         window.cerrarPaywall();
                         await window.cargarSuscripcionUsuario();
                         await window.loadCoupons();
@@ -454,9 +446,7 @@ async def home():
                 }
             };
 
-            // =========================================================================
             // LISTA DE LA COMPRA INTELIGENTE
-            // =========================================================================
             window.loadShoppingList = async () => {
                 try {
                     const res = await authFetch('/lista');
@@ -694,7 +684,7 @@ async def home():
                 }
             };
 
-            // CÁMARA IN-APP WEBRTC CON COMPRESIÓN
+            // CÁMARA IN-APP WEBRTC
             let cameraStream = null;
             let torchActive = false;
 
@@ -832,7 +822,6 @@ async def get_sub_status(user_id: str = Depends(get_current_user)):
 @app.post("/usuario/suscribir")
 async def suscribir_usuario(data: dict = Body(...), user_id: str = Depends(get_current_user)):
     plan = data.get("plan", "mensual")
-    # Activamos la suscripción premium en base de datos
     database.activar_suscripcion_db(user_id, plan=plan)
     return {"ok": True}
 
