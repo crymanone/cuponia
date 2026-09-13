@@ -74,7 +74,7 @@ async def privacy():
     """
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (PWA CON CÁMARA 100% ADAPTABLE)
+# FRONTEND INTERACTIVO (PWA + PAYWALL MODAL)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -92,18 +92,22 @@ async def home():
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
         <style>
-            :root { --primary: #004d40; --primary-light: #00796b; --accent: #ff6f00; --bg: #f4f6f8; --card: #ffffff; }
+            :root { --primary: #004d40; --primary-light: #00796b; --accent: #ff6f00; --gold: #ffd700; --bg: #f4f6f8; --card: #ffffff; }
             body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); margin: 0; color: #263238; display: flex; justify-content: center; min-height: 100vh; padding-bottom: 50px; }
             .app-container { width: 100%; max-width: 600px; padding: 15px; display: none; position: relative; }
             
             #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%; text-align: center; }
             .login-btn { background: white; color: #444; border: 1px solid #ddd; padding: 15px 30px; border-radius: 50px; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
             
-            #user-info { position: absolute; top: 15px; right: 15px; z-index: 100; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.95); padding: 5px 15px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); backdrop-filter: blur(5px); }
-            .user-name { font-size: 13px; font-weight: 600; color: #37474f; }
-            .logout-btn { background: #ff5252; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer; }
+            /* Header Usuario Flotante */
+            #user-info { position: absolute; top: 15px; right: 15px; z-index: 100; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.95); padding: 5px 12px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); backdrop-filter: blur(5px); }
+            .user-name { font-size: 12px; font-weight: 600; color: #37474f; }
+            .badge-plan { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 800; cursor: pointer; }
+            .badge-plan.free { background: #e0f2f1; color: #00796b; border: 1px solid #80cbc4; }
+            .badge-plan.premium { background: linear-gradient(135deg, #ffd700, #ffb300); color: #3e2723; box-shadow: 0 2px 5px rgba(255,179,0,0.4); }
+            .logout-btn { background: #ff5252; color: white; border: none; padding: 5px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; cursor: pointer; }
             
-            header { text-align: center; margin-top: 50px; margin-bottom: 20px; }
+            header { text-align: center; margin-top: 55px; margin-bottom: 20px; }
             h1 { margin: 0; color: var(--primary); font-size: 34px; letter-spacing: -1px; font-weight: 900; }
             .tagline { color: #546e7a; font-size: 13px; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
             
@@ -116,11 +120,13 @@ async def home():
             .btn { width: 100%; padding: 15px; border: none; border-radius: 14px; font-size: 15px; font-weight: 700; color: white; cursor: pointer; transition: 0.2s; box-sizing: border-box; text-align: center; }
             .btn-green { background: linear-gradient(135deg, #00796b, #004d40); box-shadow: 0 4px 12px rgba(0,77,64,0.3); }
             .btn-orange { background: linear-gradient(135deg, #ff6f00, #ffa000); box-shadow: 0 4px 12px rgba(255,111,0,0.3); }
+            .btn-gold { background: linear-gradient(135deg, #ffd700, #ff9800); color: #3e2723; font-weight: 900; box-shadow: 0 4px 12px rgba(255,152,0,0.4); }
             
             .filters-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; scrollbar-width: none; }
             .chip { background: #e0f2f1; color: #004d40; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; border: 1px solid #b2dfdb; }
             .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
+            /* Tarjetas de Cupones */
             .coupon-item { background: white; border-radius: 16px; border: 1px solid #e0e0e0; margin-bottom: 15px; padding: 16px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
             .coupon-badge-market { background: #e0f2f1; color: #00796b; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block; }
             .coupon-title { font-size: 17px; font-weight: bold; color: #263238; margin: 4px 0; }
@@ -141,113 +147,28 @@ async def home():
             .app-footer { margin-top: 40px; padding: 25px; background: var(--primary); color: white; text-align: center; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,77,64,0.2); }
             .legal-text { font-size: 10px; margin-top: 10px; opacity: 0.7; line-height: 1.4; }
 
+            /* MODAL MURO DE PAGO (PAYWALL) */
+            #paywallModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3500; justify-content: center; align-items: center; }
+            .paywall-box { background: white; padding: 25px 20px; border-radius: 24px; width: 90%; max-width: 380px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+            .plan-card { border: 2px solid #e0e0e0; border-radius: 16px; padding: 15px; margin-bottom: 12px; cursor: pointer; transition: 0.2s; text-align: left; }
+            .plan-card.featured { border-color: #ff9800; background: #fff8e1; }
+            .plan-card:hover { transform: scale(1.02); }
+            .perks-list { text-align: left; font-size: 13px; color: #37474f; margin: 15px 0; line-height: 1.8; }
+
             #barcodeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
             .barcode-box { background: white; padding: 25px 20px; border-radius: 20px; width: 90%; max-width: 360px; text-align: center; }
             
-            /* --- NUEVOS ESTILOS CÁMARA ADAPTABLE (100dvh + Flexbox Seguro) --- */
-            #cameraModal { 
-                display: none; 
-                position: fixed; 
-                top: 0; 
-                left: 0; 
-                width: 100%; 
-                height: 100vh; 
-                height: 100dvh; /* Altura dinámica que se adapta a las barras de Android */
-                background: #000; 
-                z-index: 2000; 
-                flex-direction: column; 
-                box-sizing: border-box;
-                overflow: hidden;
-            }
-            .camera-header { 
-                width: 100%; 
-                padding: 12px 16px; 
-                display: flex; 
-                justify-content: space-between; 
-                align-items: center; 
-                box-sizing: border-box; 
-                color: white; 
-                z-index: 10; 
-                background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
-                flex-shrink: 0;
-            }
-            .camera-viewport { 
-                position: relative; 
-                width: 100%; 
-                flex: 1; 
-                min-height: 0; /* Evita que el vídeo empuje la barra inferior fuera de pantalla */
-                display: flex; 
-                justify-content: center; 
-                align-items: center; 
-                overflow: hidden; 
-            }
-            #cameraVideo { 
-                width: 100%; 
-                height: 100%; 
-                object-fit: cover; 
-            }
-            .camera-guide { 
-                position: absolute; 
-                width: 80%; 
-                max-width: 320px; 
-                height: 60%; 
-                max-height: 380px; 
-                border: 2px dashed #00e676; 
-                border-radius: 20px; 
-                box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); 
-                pointer-events: none; 
-                display: flex;
-                justify-content: center;
-                align-items: flex-end;
-                padding-bottom: 15px;
-            }
-            .camera-guide-text { 
-                color: white; 
-                font-size: 11px; 
-                font-weight: bold; 
-                background: rgba(0,0,0,0.7); 
-                padding: 4px 12px; 
-                border-radius: 20px; 
-            }
-            .camera-footer { 
-                width: 100%; 
-                padding: 15px 0 calc(15px + env(safe-area-inset-bottom, 10px)) 0; 
-                background: rgba(0,0,0,0.85); 
-                display: flex; 
-                justify-content: center; 
-                align-items: center; 
-                gap: 40px; 
-                flex-shrink: 0; /* Prohíbe que el botón se salga de la pantalla */
-                box-sizing: border-box;
-            }
-            .btn-shutter { 
-                width: 70px; 
-                height: 70px; 
-                border-radius: 50%; 
-                background: white; 
-                border: 4px solid var(--primary); 
-                box-shadow: 0 0 20px rgba(255,255,255,0.4); 
-                cursor: pointer; 
-                display: flex; 
-                justify-content: center; 
-                align-items: center; 
-                transition: 0.1s; 
-            }
+            #cameraModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100dvh; background: #000; z-index: 2000; flex-direction: column; box-sizing: border-box; overflow: hidden; }
+            .camera-header { width: 100%; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; color: white; z-index: 10; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); flex-shrink: 0; }
+            .camera-viewport { position: relative; width: 100%; flex: 1; min-height: 0; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+            #cameraVideo { width: 100%; height: 100%; object-fit: cover; }
+            .camera-guide { position: absolute; width: 80%; max-width: 320px; height: 60%; max-height: 380px; border: 2px dashed #00e676; border-radius: 20px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); pointer-events: none; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 15px; }
+            .camera-guide-text { color: white; font-size: 11px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 20px; }
+            .camera-footer { width: 100%; padding: 15px 0 calc(15px + env(safe-area-inset-bottom, 10px)) 0; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; gap: 40px; flex-shrink: 0; box-sizing: border-box; }
+            .btn-shutter { width: 70px; height: 70px; border-radius: 50%; background: white; border: 4px solid var(--primary); box-shadow: 0 0 20px rgba(255,255,255,0.4); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.1s; }
             .btn-shutter:active { transform: scale(0.92); }
             .btn-shutter-inner { width: 52px; height: 52px; border-radius: 50%; background: var(--primary); }
-            .btn-camera-action { 
-                background: rgba(255,255,255,0.25); 
-                border: none; 
-                color: white; 
-                border-radius: 50%; 
-                width: 42px; 
-                height: 42px; 
-                font-size: 18px; 
-                cursor: pointer; 
-                display: flex; 
-                justify-content: center; 
-                align-items: center; 
-            }
+            .btn-camera-action { background: rgba(255,255,255,0.25); border: none; color: white; border-radius: 50%; width: 42px; height: 42px; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
         </style>
     </head>
     <body>
@@ -336,6 +257,38 @@ async def home():
             </div>
         </div>
 
+        <!-- MODAL MURO DE PAGO (PAYWALL) -->
+        <div id="paywallModal">
+            <div class="paywall-box">
+                <h2 style="color:#004d40; margin:0 0 5px 0;">👑 CupónIA Premium</h2>
+                <p style="font-size:13px; color:#666; margin-bottom:15px;">Ahorra sin límites en tu compra semanal</p>
+                
+                <div class="perks-list">
+                    <div>✨ <b>Cupones ilimitados</b> (Sin tope de 5)</div>
+                    <div>🎙️ <b>Lista inteligente por voz</b> sin límites</div>
+                    <div>🚫 <b>Cero Publicidad</b> molesta</div>
+                    <div>🔔 <b>Alertas de caducidad</b> automáticas</div>
+                </div>
+
+                <!-- Plan Anual (Destacado) -->
+                <div class="plan-card featured" onclick="suscribirse('anual')">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <b>⭐ Plan Anual (Recomendado)</b>
+                        <span style="background:#ff9800; color:white; font-size:10px; padding:2px 6px; border-radius:10px; font-weight:bold;">-40% Ahorro</span>
+                    </div>
+                    <div style="font-size:22px; font-weight:900; color:#e65100; margin-top:4px;">14,99 € <span style="font-size:12px; font-weight:normal; color:#666;">/ año (1,25€/mes)</span></div>
+                </div>
+
+                <!-- Plan Mensual -->
+                <div class="plan-card" onclick="suscribirse('mensual')">
+                    <b>Plan Mensual</b>
+                    <div style="font-size:18px; font-weight:bold; color:#004d40; margin-top:4px;">1,99 € <span style="font-size:12px; font-weight:normal; color:#666;">/ mes</span></div>
+                </div>
+
+                <button class="btn" style="background:#eee; color:#444; margin-top:10px;" onclick="cerrarPaywall()">Volver</button>
+            </div>
+        </div>
+
         <!-- MODAL CÓDIGO DE BARRAS -->
         <div id="barcodeModal">
             <div class="barcode-box">
@@ -352,7 +305,7 @@ async def home():
             </div>
         </div>
 
-        <!-- MODAL CÁMARA IN-APP (100% Adaptable) -->
+        <!-- MODAL CÁMARA IN-APP (WebRTC) -->
         <div id="cameraModal">
             <div class="camera-header">
                 <button id="btnTorch" class="btn-camera-action" onclick="toggleTorch()" title="Encender Linterna">🔦</button>
@@ -385,6 +338,7 @@ async def home():
             window.userToken = null;
             window.allCoupons = [];
             window.shoppingList = [];
+            window.userSubscription = { is_premium: false, plan: "free", cupones_activos: 0 };
             window.selectedMarket = 'todos';
             window.currentCouponIdModal = null;
 
@@ -396,9 +350,7 @@ async def home():
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('appScreen').style.display = 'block';
                     
-                    const n = u.displayName ? u.displayName.split(' ')[0] : 'Usuario';
-                    document.getElementById('user-info').innerHTML = `<span class="user-name">Hola, ${n}</span> <button class="logout-btn" onclick="window.logout()">🚪 Salir</button>`;
-                    
+                    await window.cargarSuscripcionUsuario();
                     await window.loadCoupons();
                     await window.loadShoppingList();
                 } else {
@@ -417,7 +369,55 @@ async def home():
                 return fetch(url, opts);
             }
 
+            // =========================================================================
+            // GESTIÓN DE SUSCRIPCIÓN Y PAYWALL
+            // =========================================================================
+            window.cargarSuscripcionUsuario = async () => {
+                try {
+                    const res = await authFetch('/usuario/suscripcion');
+                    window.userSubscription = await res.json();
+                    
+                    const u = auth.currentUser;
+                    const n = u && u.displayName ? u.displayName.split(' ')[0] : 'Usuario';
+                    
+                    let badgePlan = window.userSubscription.is_premium 
+                        ? `<span class="badge-plan premium" onclick="abrirPaywall()">👑 Premium</span>`
+                        : `<span class="badge-plan free" onclick="abrirPaywall()">⭐ Free (${window.userSubscription.cupones_activos}/5)</span>`;
+
+                    document.getElementById('user-info').innerHTML = `
+                        <span class="user-name">Hola, ${n}</span>
+                        ${badgePlan}
+                        <button class="logout-btn" onclick="window.logout()">🚪</button>
+                    `;
+                } catch(e) {}
+            };
+
+            window.abrirPaywall = () => document.getElementById('paywallModal').style.display = 'flex';
+            window.cerrarPaywall = () => document.getElementById('paywallModal').style.display = 'none';
+
+            window.suscribirse = async (plan) => {
+                try {
+                    // Integración con Google Play / Mock de activación en Beta
+                    const res = await authFetch('/usuario/suscribir', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ plan: plan })
+                    });
+                    const d = await res.json();
+                    if (d.ok) {
+                        alert(`🎉 ¡Bienvenido a CupónIA Premium (${plan.toUpperCase()})! Límite de cupones desbloqueado.`);
+                        window.cerrarPaywall();
+                        await window.cargarSuscripcionUsuario();
+                        await window.loadCoupons();
+                    }
+                } catch(e) {
+                    alert("Error procesando suscripción");
+                }
+            };
+
+            // =========================================================================
             // LISTA DE LA COMPRA INTELIGENTE
+            // =========================================================================
             window.loadShoppingList = async () => {
                 try {
                     const res = await authFetch('/lista');
@@ -544,13 +544,16 @@ async def home():
                 recognition.start();
             };
 
+            // =========================================================================
             // LÓGICA DE CUPONES
+            // =========================================================================
             window.loadCoupons = async () => {
                 try {
                     const res = await authFetch('/cupones');
                     window.allCoupons = await res.json();
                     window.renderCoupons();
                     if (window.shoppingList.length > 0) window.renderShoppingList();
+                    await window.cargarSuscripcionUsuario();
                 } catch(e) {}
             };
 
@@ -654,11 +657,17 @@ async def home():
                 }
             };
 
-            // CÁMARA IN-APP WEBRTC ADAPTABLE
+            // CÁMARA IN-APP WEBRTC CON COMPRESIÓN ULTRA-ECONÓMICA
             let cameraStream = null;
             let torchActive = false;
 
             window.abrirCamara = async () => {
+                // Comprobamos si ha llegado al límite free antes de encender la cámara
+                if (!window.userSubscription.is_premium && window.userSubscription.cupones_activos >= 5) {
+                    window.abrirPaywall();
+                    return;
+                }
+
                 const modal = document.getElementById('cameraModal');
                 const video = document.getElementById('cameraVideo');
                 modal.style.display = 'flex';
@@ -667,7 +676,7 @@ async def home():
 
                 try {
                     cameraStream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+                        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
                         audio: false
                     });
                     video.srcObject = cameraStream;
@@ -679,8 +688,6 @@ async def home():
             };
 
             window.cerrarCamara = () => {
-                const modal = document.getElementById('cameraModal');
-                const video = document.getElementById('cameraVideo');
                 if (cameraStream) {
                     cameraStream.getTracks().forEach(track => track.stop());
                     cameraStream = null;
@@ -711,10 +718,19 @@ async def home():
                 btn.disabled = true;
                 btn.style.opacity = "0.5";
 
-                canvas.width = video.videoWidth || 1280;
-                canvas.height = video.videoHeight || 720;
+                // Compresión en el móvil (Ahorro de costes Gemini al 90%)
+                const maxDim = 1024;
+                let w = video.videoWidth || 1280;
+                let h = video.videoHeight || 720;
+                if (w > maxDim || h > maxDim) {
+                    if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                    else { w = Math.round((w * maxDim) / h); h = maxDim; }
+                }
+
+                canvas.width = w;
+                canvas.height = h;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                ctx.drawImage(video, 0, 0, w, h);
 
                 canvas.toBlob(async (blob) => {
                     window.cerrarCamara();
@@ -726,10 +742,14 @@ async def home():
                     const fd = new FormData();
                     fd.append("file", blob, "cupon.jpg");
                     await window.procesarSubida(fd);
-                }, 'image/jpeg', 0.92);
+                }, 'image/jpeg', 0.82);
             };
 
             window.subirGaleria = async () => {
+                if (!window.userSubscription.is_premium && window.userSubscription.cupones_activos >= 5) {
+                    window.abrirPaywall();
+                    return;
+                }
                 const inp = document.getElementById('fileInput');
                 if (!inp.files.length) return;
                 const fd = new FormData();
@@ -740,13 +760,15 @@ async def home():
 
             window.procesarSubida = async (formData) => {
                 const btn = document.getElementById('btnScan');
-                btn.innerHTML = "⏳ Analizando cupón con IA...";
+                btn.innerHTML = "⏳ Analizando con IA...";
                 btn.disabled = true;
 
                 try {
                     const res = await authFetch('/scan', {method:'POST', body:formData});
                     const d = await res.json();
-                    if (d.ok) {
+                    if (d.status === "limit_reached") {
+                        window.abrirPaywall();
+                    } else if (d.ok) {
                         alert(`✅ ¡Guardado! ${d.data.titulo_descuento} (${d.data.supermercado})`);
                         window.loadCoupons();
                     } else {
@@ -768,8 +790,23 @@ async def home():
 # ==============================================================================
 # ENDPOINTS REST
 # ==============================================================================
+@app.get("/usuario/suscripcion")
+async def get_sub_status(user_id: str = Depends(get_current_user)):
+    return database.obtener_perfil_suscripcion(user_id)
+
+@app.post("/usuario/suscribir")
+async def suscribir_usuario(data: dict = Body(...), user_id: str = Depends(get_current_user)):
+    plan = data.get("plan", "mensual")
+    database.activar_suscripcion_db(user_id, plan=plan)
+    return {"ok": True}
+
 @app.post("/scan")
 async def scan_cupon(file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
+    # 1. Verificamos límite de cupones para usuarios Free
+    perfil = database.obtener_perfil_suscripcion(user_id)
+    if not perfil["is_premium"] and perfil["cupones_activos"] >= 5:
+        return JSONResponse({"ok": False, "status": "limit_reached", "message": "Límite de 5 cupones alcanzado"})
+
     temp = f"temp_{file.filename}"
     with open(temp, "wb") as f: shutil.copyfileobj(file.file, f)
     try:

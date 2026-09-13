@@ -1,7 +1,7 @@
 import os
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, text
 from sqlalchemy.orm import sessionmaker, declarative_base
-from datetime import datetime
+from datetime import datetime, timedelta
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./cuponia.db")
 if DATABASE_URL.startswith("postgres://"):
@@ -33,8 +33,16 @@ class ItemLista(Base):
     __tablename__ = "items_lista"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, default="anonimo")
-    producto = Column(String)                             # Ej: "Aceite de oliva"
-    is_checked = Column(Boolean, default=False)           # Tachado en el carrito
+    producto = Column(String)                             
+    is_checked = Column(Boolean, default=False)           
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class UsuarioSuscripcion(Base):
+    __tablename__ = "usuarios_suscripcion"
+    user_id = Column(String, primary_key=True, index=True)
+    is_premium = Column(Boolean, default=False)
+    plan = Column(String, default="free")                # "free", "mensual", "anual"
+    expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 # --- INICIALIZACIÓN ---
@@ -45,6 +53,57 @@ def inicializar_db():
             conn.execute(text("ALTER TABLE cupones ADD COLUMN IF NOT EXISTS importe_descuento FLOAT DEFAULT 0.0;"))
             conn.commit()
     except Exception: pass
+
+# --- CONTROL DE SUSCRIPCIONES Y LÍMITES ---
+def obtener_perfil_suscripcion(user_uid):
+    db = SessionLocal()
+    # 1. Comprobamos si tiene suscripción activa
+    sub = db.query(UsuarioSuscripcion).filter(UsuarioSuscripcion.user_id == user_uid).first()
+    is_prem = False
+    plan = "free"
+    
+    if sub and sub.is_premium:
+        if sub.expires_at and sub.expires_at > datetime.utcnow():
+            is_prem = True
+            plan = sub.plan
+        else:
+            # Ha caducado
+            sub.is_premium = False
+            db.commit()
+
+    # 2. Contamos cuántos cupones activos (sin usar) tiene guardados
+    activos = db.query(Cupon).filter(Cupon.user_id == user_uid, Cupon.is_used == False).count()
+    db.close()
+    
+    return {
+        "is_premium": is_prem,
+        "plan": plan,
+        "cupones_activos": activos,
+        "limite_free": 5
+    }
+
+def activar_suscripcion_db(user_uid, plan="mensual"):
+    db = SessionLocal()
+    try:
+        sub = db.query(UsuarioSuscripcion).filter(UsuarioSuscripcion.user_id == user_uid).first()
+        dias = 365 if plan == "anual" else 30
+        expira = datetime.utcnow() + timedelta(days=dias)
+
+        if not sub:
+            sub = UsuarioSuscripcion(user_id=user_uid, is_premium=True, plan=plan, expires_at=expira)
+            db.add(sub)
+        else:
+            sub.is_premium = True
+            sub.plan = plan
+            sub.expires_at = expira
+
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        return False
+    finally:
+        db.close()
 
 # --- FUNCIONES DE CUPONES ---
 def guardar_cupon_orm(datos_json, user_uid="anonimo"):
@@ -71,7 +130,7 @@ def guardar_cupon_orm(datos_json, user_uid="anonimo"):
         db.commit()
         db.refresh(nuevo)
         return nuevo.id
-    except Exception as e:
+    except Exception:
         db.rollback()
         return None
     finally:
@@ -121,7 +180,7 @@ def borrar_cupon(cupon_id, user_uid):
     finally:
         db.close()
 
-# --- NUEVAS FUNCIONES DE LA LISTA DE LA COMPRA ---
+# --- FUNCIONES DE LA LISTA DE LA COMPRA ---
 def guardar_item_lista(producto, user_uid):
     db = SessionLocal()
     try:
