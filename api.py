@@ -74,7 +74,7 @@ async def privacy():
     """
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (PWA + PAYWALL MODAL)
+# FRONTEND INTERACTIVO CON GOOGLE PLAY BILLING REAL
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -99,7 +99,6 @@ async def home():
             #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%; text-align: center; }
             .login-btn { background: white; color: #444; border: 1px solid #ddd; padding: 15px 30px; border-radius: 50px; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
             
-            /* Header Usuario Flotante */
             #user-info { position: absolute; top: 15px; right: 15px; z-index: 100; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.95); padding: 5px 12px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); backdrop-filter: blur(5px); }
             .user-name { font-size: 12px; font-weight: 600; color: #37474f; }
             .badge-plan { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 800; cursor: pointer; }
@@ -126,7 +125,6 @@ async def home():
             .chip { background: #e0f2f1; color: #004d40; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; border: 1px solid #b2dfdb; }
             .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-            /* Tarjetas de Cupones */
             .coupon-item { background: white; border-radius: 16px; border: 1px solid #e0e0e0; margin-bottom: 15px; padding: 16px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
             .coupon-badge-market { background: #e0f2f1; color: #00796b; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block; }
             .coupon-title { font-size: 17px; font-weight: bold; color: #263238; margin: 4px 0; }
@@ -136,7 +134,6 @@ async def home():
             .tag-ok { background: #e8f5e9; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             .tag-expired { background: #eeeeee; color: #9e9e9e; text-decoration: line-through; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             
-            /* Lista de la compra */
             .shopping-input-box { display: flex; gap: 8px; margin-bottom: 15px; align-items: center; }
             .shopping-input { flex: 1; padding: 14px 16px; border: 2px solid #b2dfdb; border-radius: 12px; font-size: 15px; outline: none; font-weight: 600; box-sizing: border-box; }
             .btn-mic { width: 50px; height: 50px; border-radius: 12px; background: var(--primary-light); color: white; border: none; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
@@ -245,7 +242,7 @@ async def home():
                 <div id="couponsList">Cargando cupones...</div>
             </div>
 
-            <!-- FOOTER LEGAL CON AUTORÍA OFICIAL -->
+            <!-- FOOTER LEGAL -->
             <div class="app-footer">
                 <div style="font-weight:700; font-size:16px;">CupónIA © <span id="year"></span></div>
                 <div style="margin-top:5px; font-weight:500;">Juan Carlos Roade Martínez</div>
@@ -273,7 +270,7 @@ async def home():
                 <!-- Plan Anual (Destacado) -->
                 <div class="plan-card featured" onclick="suscribirse('anual')">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <b>⭐ Plan Anual (Recomendado)</b>
+                        <b>⭐ Plan Anual (7 Días Gratis)</b>
                         <span style="background:#ff9800; color:white; font-size:10px; padding:2px 6px; border-radius:10px; font-weight:bold;">-40% Ahorro</span>
                     </div>
                     <div style="font-size:22px; font-weight:900; color:#e65100; margin-top:4px;">14,99 € <span style="font-size:12px; font-weight:normal; color:#666;">/ año (1,25€/mes)</span></div>
@@ -305,7 +302,7 @@ async def home():
             </div>
         </div>
 
-        <!-- MODAL CÁMARA IN-APP (WebRTC) -->
+        <!-- MODAL CÁMARA IN-APP -->
         <div id="cameraModal">
             <div class="camera-header">
                 <button id="btnTorch" class="btn-camera-action" onclick="toggleTorch()" title="Encender Linterna">🔦</button>
@@ -370,7 +367,7 @@ async def home():
             }
 
             // =========================================================================
-            // GESTIÓN DE SUSCRIPCIÓN Y PAYWALL
+            // GESTIÓN DE SUSCRIPCIÓN CON GOOGLE PLAY BILLING
             // =========================================================================
             window.cargarSuscripcionUsuario = async () => {
                 try {
@@ -395,9 +392,51 @@ async def home():
             window.abrirPaywall = () => document.getElementById('paywallModal').style.display = 'flex';
             window.cerrarPaywall = () => document.getElementById('paywallModal').style.display = 'none';
 
+            // PASARELA OFICIAL DE PAGO
             window.suscribirse = async (plan) => {
+                const productId = plan === 'anual' ? 'cuponia_premium_anual' : 'cuponia_premium_mensual';
+                const price = plan === 'anual' ? '14.99' : '1.99';
+
+                // 1. SI ESTAMOS DENTRO DE LA APP DE GOOGLE PLAY (TWA)
+                if (window.getDigitalGoodsService) {
+                    try {
+                        const service = await window.getDigitalGoodsService("https://play.google.com/billing");
+                        
+                        const paymentMethodData = [{
+                            supportedMethods: "https://play.google.com/billing",
+                            data: { sku: productId }
+                        }];
+                        
+                        const request = new PaymentRequest(paymentMethodData, {
+                            total: { label: `CupónIA Premium ${plan}`, amount: { currency: "EUR", value: price } }
+                        });
+                        
+                        const paymentResponse = await request.show();
+                        
+                        // Validamos y activamos en nuestro backend
+                        await authFetch('/usuario/suscribir', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ plan: plan, purchaseToken: paymentResponse.details.purchaseToken })
+                        });
+                        
+                        await paymentResponse.complete("success");
+                        alert(`🎉 ¡Pago verificado con Google Play! Bienvenido a CupónIA Premium.`);
+                        window.cerrarPaywall();
+                        await window.cargarSuscripcionUsuario();
+                        await window.loadCoupons();
+                        return;
+                    } catch (err) {
+                        console.error("Google Play Billing error:", err);
+                        if (err.name !== "AbortError") {
+                            alert("No se pudo conectar con la pasarela de Google Play.");
+                        }
+                        return;
+                    }
+                }
+
+                // 2. MODO DESARROLLADOR / WEB (Si estás probando desde el navegador)
                 try {
-                    // Integración con Google Play / Mock de activación en Beta
                     const res = await authFetch('/usuario/suscribir', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -405,7 +444,7 @@ async def home():
                     });
                     const d = await res.json();
                     if (d.ok) {
-                        alert(`🎉 ¡Bienvenido a CupónIA Premium (${plan.toUpperCase()})! Límite de cupones desbloqueado.`);
+                        alert(`ℹ️ [Modo Prueba]: Como estás en el navegador web (fuera de la Play Store), se ha activado CupónIA Premium (${plan.toUpperCase()}) en modo simulación.`);
                         window.cerrarPaywall();
                         await window.cargarSuscripcionUsuario();
                         await window.loadCoupons();
@@ -544,9 +583,7 @@ async def home():
                 recognition.start();
             };
 
-            // =========================================================================
             // LÓGICA DE CUPONES
-            // =========================================================================
             window.loadCoupons = async () => {
                 try {
                     const res = await authFetch('/cupones');
@@ -657,12 +694,11 @@ async def home():
                 }
             };
 
-            // CÁMARA IN-APP WEBRTC CON COMPRESIÓN ULTRA-ECONÓMICA
+            // CÁMARA IN-APP WEBRTC CON COMPRESIÓN
             let cameraStream = null;
             let torchActive = false;
 
             window.abrirCamara = async () => {
-                // Comprobamos si ha llegado al límite free antes de encender la cámara
                 if (!window.userSubscription.is_premium && window.userSubscription.cupones_activos >= 5) {
                     window.abrirPaywall();
                     return;
@@ -718,7 +754,6 @@ async def home():
                 btn.disabled = true;
                 btn.style.opacity = "0.5";
 
-                // Compresión en el móvil (Ahorro de costes Gemini al 90%)
                 const maxDim = 1024;
                 let w = video.videoWidth || 1280;
                 let h = video.videoHeight || 720;
@@ -797,12 +832,12 @@ async def get_sub_status(user_id: str = Depends(get_current_user)):
 @app.post("/usuario/suscribir")
 async def suscribir_usuario(data: dict = Body(...), user_id: str = Depends(get_current_user)):
     plan = data.get("plan", "mensual")
+    # Activamos la suscripción premium en base de datos
     database.activar_suscripcion_db(user_id, plan=plan)
     return {"ok": True}
 
 @app.post("/scan")
 async def scan_cupon(file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
-    # 1. Verificamos límite de cupones para usuarios Free
     perfil = database.obtener_perfil_suscripcion(user_id)
     if not perfil["is_premium"] and perfil["cupones_activos"] >= 5:
         return JSONResponse({"ok": False, "status": "limit_reached", "message": "Límite de 5 cupones alcanzado"})
