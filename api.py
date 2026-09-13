@@ -10,8 +10,8 @@ from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 import firebase_admin
 from firebase_admin import credentials, auth
 
-import cupones      # IA Visión de Cupones
-import database     # Base de Datos de CuponIA
+import cupones      
+import database     
 
 # ==============================================================================
 # INICIALIZACIÓN
@@ -30,7 +30,7 @@ if not firebase_admin._apps:
     except Exception as e:
         print(f"⚠️ [BOOT] Error Firebase: {e}")
 
-app = FastAPI(title="CuponIA Enterprise - Smart Coupon Wallet")
+app = FastAPI(title="CuponIA Enterprise - Smart Coupon & Shopping List")
 database.inicializar_db()
 
 async def get_current_user(authorization: str = Header(...)):
@@ -58,12 +58,18 @@ async def get_icon():
     if os.path.exists("cuponia_icon.png"): return FileResponse("cuponia_icon.png")
     return JSONResponse(status_code=404, content={"error": "Icono no encontrado"})
 
+@app.get("/favicon.ico")
+async def get_favicon():
+    if os.path.exists("favicon.ico"): return FileResponse("favicon.ico")
+    if os.path.exists("cuponia_icon.png"): return FileResponse("cuponia_icon.png")
+    return JSONResponse(status_code=404, content={"error": "Icono no encontrado"})
+
 @app.get("/privacy-policy", response_class=HTMLResponse)
 async def privacy():
-    return """<html><body><h1>Política de Privacidad de CuponIA</h1><p>CuponIA solo usa la cámara para escanear tus cupones y vales de descuento de supermercado. Tus datos se guardan de forma privada y segura.</p></body></html>"""
+    return """<html><body><h1>Política de Privacidad de CuponIA</h1><p>CuponIA solo usa la cámara y el micrófono para escanear tus cupones y dictar tu lista de la compra de forma privada y segura.</p></body></html>"""
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (PWA + JsBarcode)
+# FRONTEND INTERACTIVO (PWA + LISTA DE LA COMPRA POR VOZ)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -71,60 +77,66 @@ async def home():
     <!DOCTYPE html>
     <html lang="es">
     <head>
-        <title>CuponIA - Cartera Inteligente de Supermercado</title>
+        <title>CuponIA - Cartera y Lista de la Compra</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
         <link rel="manifest" href="/manifest.json">
+        <link rel="icon" type="image/png" href="/cuponia_icon.png">
         <meta name="theme-color" content="#004d40">
         
-        <!-- Librería ultra-ligera para generar códigos de barra láser en pantalla -->
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
         <style>
             :root { --primary: #004d40; --primary-light: #00796b; --accent: #ff6f00; --bg: #f4f6f8; --card: #ffffff; }
             body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); margin: 0; color: #263238; display: flex; justify-content: center; min-height: 100vh; padding-bottom: 50px; }
-            .app-container { width: 100%; max-width: 600px; padding: 15px; display: none; }
+            .app-container { width: 100%; max-width: 600px; padding: 15px; display: none; position: relative; }
             
             #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%; text-align: center; }
             .login-btn { background: white; color: #444; border: 1px solid #ddd; padding: 15px 30px; border-radius: 50px; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+            
+            #user-info { position: absolute; top: 15px; right: 15px; z-index: 100; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.95); padding: 5px 15px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); backdrop-filter: blur(5px); }
+            .user-name { font-size: 13px; font-weight: 600; color: #37474f; }
+            .logout-btn { background: #ff5252; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer; }
             
             header { text-align: center; margin-top: 50px; margin-bottom: 20px; }
             h1 { margin: 0; color: var(--primary); font-size: 34px; letter-spacing: -1px; font-weight: 900; }
             .tagline { color: #546e7a; font-size: 13px; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
             
-            /* Tarjeta de Ahorro Acumulado */
             .savings-card { background: linear-gradient(135deg, #004d40, #00796b); color: white; padding: 20px; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,77,64,0.3); margin-bottom: 20px; }
             .savings-amount { font-size: 36px; font-weight: 900; margin: 5px 0; color: #a7ffeb; }
             
             .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.04); margin-bottom: 20px; }
-            h3 { margin-top: 0; color: var(--primary); font-size: 17px; display: flex; align-items: center; gap: 8px; }
+            h3 { margin-top: 0; color: var(--primary); font-size: 17px; display: flex; align-items: center; gap: 8px; font-weight: 800; }
             
             .btn { width: 100%; padding: 15px; border: none; border-radius: 14px; font-size: 15px; font-weight: 700; color: white; cursor: pointer; transition: 0.2s; box-sizing: border-box; text-align: center; }
             .btn-green { background: linear-gradient(135deg, #00796b, #004d40); box-shadow: 0 4px 12px rgba(0,77,64,0.3); }
             .btn-orange { background: linear-gradient(135deg, #ff6f00, #ffa000); box-shadow: 0 4px 12px rgba(255,111,0,0.3); }
             
-            /* Filtros de Supermercados (Chips) */
             .filters-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; scrollbar-width: none; }
             .chip { background: #e0f2f1; color: #004d40; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; border: 1px solid #b2dfdb; }
             .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
             /* Tarjetas de Cupones */
             .coupon-item { background: white; border-radius: 16px; border: 1px solid #e0e0e0; margin-bottom: 15px; padding: 16px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
-            .coupon-item.used { opacity: 0.5; background: #fafafa; }
             .coupon-badge-market { background: #e0f2f1; color: #00796b; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block; }
             .coupon-title { font-size: 17px; font-weight: bold; color: #263238; margin: 4px 0; }
             .coupon-conditions { font-size: 12px; color: #78909c; }
             
-            /* Semáforo de Caducidad */
             .tag-urgent { background: #ffebee; color: #c62828; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             .tag-ok { background: #e8f5e9; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             .tag-expired { background: #eeeeee; color: #9e9e9e; text-decoration: line-through; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             
-            /* Modal Código de Barras (Pantalla de Caja) */
+            /* --- ESTILOS DE LA LISTA DE LA COMPRA INTELIGENTE --- */
+            .shopping-input-box { display: flex; gap: 8px; margin-bottom: 15px; align-items: center; }
+            .shopping-input { flex: 1; padding: 14px 16px; border: 2px solid #b2dfdb; border-radius: 12px; font-size: 15px; outline: none; font-weight: 600; box-sizing: border-box; }
+            .btn-mic { width: 50px; height: 50px; border-radius: 12px; background: var(--primary-light); color: white; border: none; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
+            .shopping-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px solid #f0f0f0; transition: 0.2s; }
+            .shopping-item.checked span.product-name { text-decoration: line-through; color: #9e9e9e; }
+            .badge-coupon-match { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; margin-left: 8px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+            
             #barcodeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
             .barcode-box { background: white; padding: 25px 20px; border-radius: 20px; width: 90%; max-width: 360px; text-align: center; }
             
-            /* Cámara WebRTC */
             #cameraModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 2000; flex-direction: column; justify-content: space-between; }
             .camera-header { padding: 15px 20px; display: flex; justify-content: space-between; color: white; background: rgba(0,0,0,0.6); }
             .camera-viewport { position: relative; width: 100%; flex: 1; display: flex; justify-content: center; align-items: center; }
@@ -138,8 +150,9 @@ async def home():
         
         <!-- PANTALLA LOGIN -->
         <div id="loginScreen">
-            <h1 style="color:#004d40">CuponIA</h1>
-            <p style="color:#666">Tu Cartera Inteligente de Descuentos</p>
+            <img src="/cuponia_icon.png" width="110" style="border-radius:24px; box-shadow:0 10px 30px rgba(0,77,64,0.3); margin-bottom:15px;">
+            <h1 style="color:#004d40; margin:0 0 5px 0;">CuponIA</h1>
+            <p style="color:#666; margin-bottom:25px;">Tu Cartera Inteligente de Descuentos</p>
             <button class="login-btn" onclick="loginWithGoogle()">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
                 <span>Acceder con Google</span>
@@ -148,6 +161,8 @@ async def home():
 
         <!-- APP PRINCIPAL -->
         <div id="appScreen" class="app-container">
+            <div id="user-info"></div>
+
             <header>
                 <h1>CuponIA</h1>
                 <div class="tagline">Ahorro Inteligente de Supermercado</div>
@@ -158,6 +173,24 @@ async def home():
                 <div style="font-size:13px; font-weight:bold; text-transform:uppercase;">💰 Tu Ahorro Disponible</div>
                 <div id="totalSavings" class="savings-amount">0.00 €</div>
                 <div style="font-size:11px; opacity:0.8;">En cupones activos listos para canjear</div>
+            </div>
+
+            <!-- NUEVA SECCIÓN: LISTA INTELIGENTE DE LA COMPRA -->
+            <div class="card" style="border: 2px solid #b2dfdb;">
+                <h3>📝 Lista de la Compra Inteligente</h3>
+                <p style="font-size:12px; color:#666; margin-top:-5px; margin-bottom:15px;">Escribe o pulsa el micro para dictar productos. ¡Te avisaremos si tienes cupón!</p>
+                
+                <div class="shopping-input-box">
+                    <input type="text" id="inputProducto" class="shopping-input" placeholder="Ej: Leche, Aceite, Detergente...">
+                    <button id="btnMic" class="btn-mic" onclick="iniciarDictadoVoz()" title="Dictar por voz">🎙️</button>
+                    <button class="btn btn-green" style="width:auto; padding:14px 18px;" onclick="agregarItemManual()">➕</button>
+                </div>
+
+                <div id="shoppingListContainer" style="margin-top:10px;">Cargando lista...</div>
+                
+                <div style="text-align:right; margin-top:15px;">
+                    <span onclick="limpiarComprados()" style="font-size:12px; color:#c62828; cursor:pointer; font-weight:bold; text-decoration:underline;">🧹 Limpiar productos comprados</span>
+                </div>
             </div>
 
             <!-- ESCÁNER DE CUPONES -->
@@ -174,7 +207,6 @@ async def home():
             <div class="card">
                 <h3>🛍️ Mis Cupones Guardados</h3>
                 
-                <!-- Filtro por Supermercado -->
                 <div class="filters-container">
                     <div class="chip active" onclick="filterMarket(this, 'todos')">Todos</div>
                     <div class="chip" onclick="filterMarket(this, 'carrefour')">Carrefour</div>
@@ -189,13 +221,12 @@ async def home():
             </div>
         </div>
 
-        <!-- MODAL CÓDIGO DE BARRAS (PARA MOSTRAR EN CAJA) -->
+        <!-- MODAL CÓDIGO DE BARRAS -->
         <div id="barcodeModal">
             <div class="barcode-box">
                 <h3 id="modalMarket" style="margin:0; justify-content:center; text-transform:uppercase; color:#004d40;">Carrefour</h3>
                 <p id="modalTitle" style="font-weight:bold; font-size:15px; margin:5px 0 15px 0;">3€ en Pescadería</p>
                 
-                <!-- Aquí se dibuja el código de barras nítido para el escáner láser -->
                 <div style="background:white; padding:10px; border-radius:10px; border:1px solid #ddd;">
                     <svg id="barcodeSvg" style="width:100%;"></svg>
                 </div>
@@ -206,7 +237,7 @@ async def home():
             </div>
         </div>
 
-        <!-- MODAL CÁMARA IN-APP (WebRTC + Linterna) -->
+        <!-- MODAL CÁMARA IN-APP -->
         <div id="cameraModal">
             <div class="camera-header">
                 <button id="btnTorch" style="background:none; border:none; font-size:20px; color:white;" onclick="toggleTorch()">🔦</button>
@@ -228,13 +259,13 @@ async def home():
             import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
             import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-            // Configuración Firebase (Reutilizamos las llaves seguras)
             const app = initializeApp({ apiKey: "AIzaSyCFB2fuuwpP-YJNzF9oFebutaK4ZHoM9tc", authDomain: "lotia-f4e4f.firebaseapp.com", projectId: "lotia-f4e4f" });
             const auth = getAuth();
             const provider = new GoogleAuthProvider();
 
             window.userToken = null;
             window.allCoupons = [];
+            window.shoppingList = [];
             window.selectedMarket = 'todos';
             window.currentCouponIdModal = null;
 
@@ -243,7 +274,12 @@ async def home():
                     window.userToken = await u.getIdToken();
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('appScreen').style.display = 'block';
-                    window.loadCoupons();
+                    
+                    const n = u.displayName ? u.displayName.split(' ')[0] : 'Usuario';
+                    document.getElementById('user-info').innerHTML = `<span class="user-name">Hola, ${n}</span> <button class="logout-btn" onclick="window.logout()">🚪 Salir</button>`;
+                    
+                    await window.loadCoupons();
+                    await window.loadShoppingList();
                 } else {
                     document.getElementById('loginScreen').style.display = 'flex';
                     document.getElementById('appScreen').style.display = 'none';
@@ -251,6 +287,7 @@ async def home():
             });
 
             window.loginWithGoogle = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
+            window.logout = () => signOut(auth).then(() => location.reload());
 
             async function authFetch(url, opts = {}) {
                 if (!window.userToken) return alert("Sesión expirada");
@@ -259,12 +296,150 @@ async def home():
                 return fetch(url, opts);
             }
 
-            // CARGAR Y RENDERIZAR CUPONES
+            // =========================================================================
+            // LÓGICA DE LA LISTA DE LA COMPRA INTELIGENTE & CRUCE CON CUPONES
+            // =========================================================================
+            window.loadShoppingList = async () => {
+                try {
+                    const res = await authFetch('/lista');
+                    window.shoppingList = await res.json();
+                    window.renderShoppingList();
+                } catch(e) {}
+            };
+
+            // Algoritmo que busca si un producto de la lista tiene cupón disponible
+            function encontrarCuponMatch(nombreProducto) {
+                if (!window.allCoupons || !nombreProducto) return null;
+                const pLower = nombreProducto.toLowerCase().trim();
+                const palabras = pLower.split(/\s+/).filter(w => w.length > 2);
+
+                for (const c of window.allCoupons) {
+                    if (c.is_used) continue;
+                    const textoCupón = `${c.titulo} ${c.condiciones} ${c.supermercado}`.toLowerCase();
+                    if (textoCupón.includes(pLower)) return c;
+                    for (const palabra of palabras) {
+                        if (textoCupón.includes(palabra)) return c;
+                    }
+                }
+                return null;
+            }
+
+            window.renderShoppingList = () => {
+                const container = document.getElementById('shoppingListContainer');
+                if (window.shoppingList.length === 0) {
+                    container.innerHTML = "<div style='text-align:center; padding:15px; color:#90a4ae; font-size:13px;'>Tu lista está vacía. ¡Prueba a dictar un producto!</div>";
+                    return;
+                }
+
+                let html = "";
+                window.shoppingList.forEach(item => {
+                    const cuponMatch = encontrarCuponMatch(item.producto);
+                    let badgeHtml = "";
+
+                    if (cuponMatch && !item.is_checked) {
+                        badgeHtml = `<span class="badge-coupon-match" onclick="mostrarBarcode(${cuponMatch.id}, '${cuponMatch.supermercado}', '${cuponMatch.titulo}', '${cuponMatch.codigo_barras}')">🏷️ ¡${cuponMatch.supermercado}: ${cuponMatch.titulo}!</span>`;
+                    }
+
+                    html += `
+                    <div class="shopping-item ${item.is_checked ? 'checked' : ''}">
+                        <div style="display:flex; align-items:center; flex:1;">
+                            <input type="checkbox" style="width:18px; height:18px; margin-right:10px; cursor:pointer;" ${item.is_checked ? 'checked' : ''} onchange="toggleCheckItem(${item.id})">
+                            <span class="product-name" style="font-size:15px; font-weight:600;">${item.producto}</span>
+                            ${badgeHtml}
+                        </div>
+                        <button style="background:none; border:none; font-size:16px; cursor:pointer; opacity:0.6;" onclick="borrarItem(${item.id})">🗑️</button>
+                    </div>`;
+                });
+
+                container.innerHTML = html;
+            };
+
+            window.agregarItemManual = async () => {
+                const inp = document.getElementById('inputProducto');
+                const val = inp.value.trim();
+                if (!val) return;
+
+                await authFetch('/lista', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ producto: val })
+                });
+
+                inp.value = "";
+                await window.loadShoppingList();
+            };
+
+            window.toggleCheckItem = async (id) => {
+                await authFetch(`/lista/${id}/toggle`, { method: 'POST' });
+                await window.loadShoppingList();
+            };
+
+            window.borrarItem = async (id) => {
+                await authFetch(`/lista/${id}`, { method: 'DELETE' });
+                await window.loadShoppingList();
+            };
+
+            window.limpiarComprados = async () => {
+                await authFetch('/lista/limpiar_completados', { method: 'DELETE' });
+                await window.loadShoppingList();
+            };
+
+            // DICTADO POR VOZ (Web Speech API)
+            let recognition = null;
+            let isListening = false;
+
+            window.iniciarDictadoVoz = () => {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    return alert("Tu móvil no soporta dictado por voz en el navegador. Usa el teclado.");
+                }
+
+                const micBtn = document.getElementById('btnMic');
+
+                if (isListening) {
+                    if (recognition) recognition.stop();
+                    return;
+                }
+
+                recognition = new SpeechRecognition();
+                recognition.lang = 'es-ES';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+
+                recognition.onstart = () => {
+                    isListening = true;
+                    micBtn.style.background = "#d32f2f";
+                    micBtn.innerText = "🔴";
+                };
+
+                recognition.onresult = async (event) => {
+                    const textoDictado = event.results[0][0].transcript;
+                    document.getElementById('inputProducto').value = textoDictado;
+                    await window.agregarItemManual();
+                };
+
+                recognition.onerror = (e) => {
+                    console.log("Error voz:", e);
+                };
+
+                recognition.onend = () => {
+                    isListening = false;
+                    micBtn.style.background = "var(--primary-light)";
+                    micBtn.innerText = "🎙️";
+                };
+
+                recognition.start();
+            };
+
+            // =========================================================================
+            // LÓGICA DE CUPONES
+            // =========================================================================
             window.loadCoupons = async () => {
                 try {
                     const res = await authFetch('/cupones');
                     window.allCoupons = await res.json();
                     window.renderCoupons();
+                    if (window.shoppingList.length > 0) window.renderShoppingList(); // Actualiza cruces
                 } catch(e) {}
             };
 
@@ -282,7 +457,7 @@ async def home():
                 const today = new Date(); today.setHours(0,0,0,0);
 
                 const filtered = window.allCoupons.filter(c => {
-                    if (c.is_used) return false; // 👈 ¡MAGIA! Oculta automáticamente los ya canjeados
+                    if (c.is_used) return false;
                     if (window.selectedMarket === 'todos') return true;
                     return c.supermercado.toLowerCase().includes(window.selectedMarket);
                 });
@@ -297,7 +472,6 @@ async def home():
                     let expBadge = "";
                     let isExpired = false;
 
-                    // Calcular Caducidad
                     if (c.fecha_caducidad && c.fecha_caducidad.includes('/')) {
                         const [d, m, y] = c.fecha_caducidad.split('/');
                         const expDate = new Date(y, m-1, d);
@@ -315,12 +489,10 @@ async def home():
                         }
                     }
 
-                    if (!c.is_used && !isExpired) {
-                        totalSavings += c.importe || 0;
-                    }
+                    if (!c.is_used && !isExpired) totalSavings += c.importe || 0;
 
                     html += `
-                    <div class="coupon-item ${c.is_used ? 'used' : ''}">
+                    <div class="coupon-item">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span class="coupon-badge-market">${c.supermercado}</span>
                             ${expBadge}
@@ -339,7 +511,6 @@ async def home():
                 document.getElementById('totalSavings').innerText = totalSavings.toFixed(2) + " €";
             };
 
-            // MOSTRAR CÓDIGO DE BARRAS EN GRANDE (JSBARCODE)
             window.mostrarBarcode = (id, market, title, code) => {
                 window.currentCouponIdModal = id;
                 document.getElementById('modalMarket').innerText = market;
@@ -347,13 +518,8 @@ async def home():
                 document.getElementById('barcodeModal').style.display = 'flex';
 
                 try {
-                    // Genera el código de barras en formato Code128 automáticamente
                     JsBarcode("#barcodeSvg", code, {
-                        format: "CODE128",
-                        width: 2.5,
-                        height: 80,
-                        displayValue: true,
-                        fontSize: 16
+                        format: "CODE128", width: 2.5, height: 80, displayValue: true, fontSize: 16
                     });
                 } catch(e) {
                     alert("Código no compatible con lector de barras");
@@ -366,7 +532,7 @@ async def home():
                 if (!window.currentCouponIdModal) return;
                 await authFetch(`/cupones/${window.currentCouponIdModal}/toggle_used`, {method:'POST'});
                 window.cerrarBarcode();
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100]); // Vibración sutil de ahorro
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
                 window.loadCoupons();
             };
 
@@ -377,7 +543,7 @@ async def home():
                 }
             };
 
-            // CÁMARA IN-APP WEBRTC
+            // CÁMARA IN-APP
             let cameraStream = null;
             let torchActive = false;
 
@@ -496,6 +662,31 @@ async def marcar_usado(cupon_id: int, user_id: str = Depends(get_current_user)):
 @app.delete("/cupones/{cupon_id}")
 async def eliminar_cupon(cupon_id: int, user_id: str = Depends(get_current_user)):
     database.borrar_cupon(cupon_id, user_id)
+    return {"ok": True}
+
+# --- NUEVAS RUTAS DE LA LISTA DE LA COMPRA ---
+@app.get("/lista")
+async def listar_items(user_id: str = Depends(get_current_user)):
+    return database.obtener_lista_usuario(user_id)
+
+@app.post("/lista")
+async def agregar_item(data: dict = Body(...), user_id: str = Depends(get_current_user)):
+    database.guardar_item_lista(data.get("producto", ""), user_id)
+    return {"ok": True}
+
+@app.post("/lista/{item_id}/toggle")
+async def check_item(item_id: int, user_id: str = Depends(get_current_user)):
+    database.alternar_check_item(item_id, user_id)
+    return {"ok": True}
+
+@app.delete("/lista/{item_id}")
+async def eliminar_item(item_id: int, user_id: str = Depends(get_current_user)):
+    database.borrar_item_lista(item_id, user_id)
+    return {"ok": True}
+
+@app.delete("/lista/limpiar_completados")
+async def limpiar_items_completados(user_id: str = Depends(get_current_user)):
+    database.limpiar_lista_completados(user_id)
     return {"ok": True}
 
 if __name__ == "__main__":

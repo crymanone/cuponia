@@ -15,32 +15,41 @@ else:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+# --- MODELOS ---
 class Cupon(Base):
     __tablename__ = "cupones"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, default="anonimo")
-    supermercado = Column(String, default="Supermercado") # Carrefour, Dia, Lidl, etc.
-    titulo_descuento = Column(String)                     # Ej: 3€ en Aceite de Oliva
-    importe_descuento = Column(Float, default=0.0)        # Valor numérico para sumar ahorro
-    condiciones = Column(String, nullable=True)           # Ej: Compra mínima de 15€
-    fecha_caducidad = Column(String)                      # DD/MM/YYYY
-    codigo_barras = Column(String, nullable=True)         # Dígitos del código de barras
-    is_used = Column(Boolean, default=False)              # Si ya se canjeó en caja
+    supermercado = Column(String, default="Supermercado") 
+    titulo_descuento = Column(String)                     
+    importe_descuento = Column(Float, default=0.0)        
+    condiciones = Column(String, nullable=True)           
+    fecha_caducidad = Column(String)                      
+    codigo_barras = Column(String, nullable=True)         
+    is_used = Column(Boolean, default=False)              
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class ItemLista(Base):
+    __tablename__ = "items_lista"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True, default="anonimo")
+    producto = Column(String)                             # Ej: "Aceite de oliva"
+    is_checked = Column(Boolean, default=False)           # Tachado en el carrito
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+# --- INICIALIZACIÓN ---
 def inicializar_db():
     Base.metadata.create_all(bind=engine)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE cupones ADD COLUMN IF NOT EXISTS importe_descuento FLOAT DEFAULT 0.0;"))
             conn.commit()
-    except Exception:
-        pass
+    except Exception: pass
 
+# --- FUNCIONES DE CUPONES ---
 def guardar_cupon_orm(datos_json, user_uid="anonimo"):
     db = SessionLocal()
     try:
-        # Extraemos el valor numérico del descuento (ej: "3€" -> 3.0)
         importe = 0.0
         try:
             imp_str = str(datos_json.get("importe_descuento", "0")).replace("€", "").replace(",", ".").strip()
@@ -64,7 +73,6 @@ def guardar_cupon_orm(datos_json, user_uid="anonimo"):
         return nuevo.id
     except Exception as e:
         db.rollback()
-        print(f"❌ Error guardando cupón: {e}")
         return None
     finally:
         db.close()
@@ -72,16 +80,12 @@ def guardar_cupon_orm(datos_json, user_uid="anonimo"):
 def obtener_cupones_usuario(user_uid):
     db = SessionLocal()
     cupones = db.query(Cupon).filter(Cupon.user_id == user_uid).order_by(Cupon.id.desc()).all()
-    resultado = []
+    resultado =[]
     for c in cupones:
         resultado.append({
-            "id": c.id,
-            "supermercado": c.supermercado,
-            "titulo": c.titulo_descuento,
-            "importe": c.importe_descuento,
-            "condiciones": c.condiciones,
-            "fecha_caducidad": c.fecha_caducidad,
-            "codigo_barras": c.codigo_barras,
+            "id": c.id, "supermercado": c.supermercado, "titulo": c.titulo_descuento,
+            "importe": c.importe_descuento, "condiciones": c.condiciones,
+            "fecha_caducidad": c.fecha_caducidad, "codigo_barras": c.codigo_barras,
             "is_used": c.is_used
         })
     db.close()
@@ -111,6 +115,70 @@ def borrar_cupon(cupon_id, user_uid):
             db.commit()
             return True
         return False
+    except Exception:
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+# --- NUEVAS FUNCIONES DE LA LISTA DE LA COMPRA ---
+def guardar_item_lista(producto, user_uid):
+    db = SessionLocal()
+    try:
+        nuevo = ItemLista(user_id=user_uid, producto=producto.strip(), is_checked=False)
+        db.add(nuevo)
+        db.commit()
+        db.refresh(nuevo)
+        return nuevo.id
+    except Exception:
+        db.rollback()
+        return None
+    finally:
+        db.close()
+
+def obtener_lista_usuario(user_uid):
+    db = SessionLocal()
+    items = db.query(ItemLista).filter(ItemLista.user_id == user_uid).order_by(ItemLista.id.asc()).all()
+    resultado = [{"id": i.id, "producto": i.producto, "is_checked": i.is_checked} for i in items]
+    db.close()
+    return resultado
+
+def alternar_check_item(item_id, user_uid):
+    db = SessionLocal()
+    try:
+        item = db.query(ItemLista).filter(ItemLista.id == item_id, ItemLista.user_id == user_uid).first()
+        if item:
+            item.is_checked = not item.is_checked
+            db.commit()
+            return True
+        return False
+    except Exception:
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def borrar_item_lista(item_id, user_uid):
+    db = SessionLocal()
+    try:
+        item = db.query(ItemLista).filter(ItemLista.id == item_id, ItemLista.user_id == user_uid).first()
+        if item:
+            db.delete(item)
+            db.commit()
+            return True
+        return False
+    except Exception:
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def limpiar_lista_completados(user_uid):
+    db = SessionLocal()
+    try:
+        db.query(ItemLista).filter(ItemLista.user_id == user_uid, ItemLista.is_checked == True).delete()
+        db.commit()
+        return True
     except Exception:
         db.rollback()
         return False
