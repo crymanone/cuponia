@@ -88,7 +88,7 @@ async def asset_links():
     }])
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (PWA + BILLING RESILIENTE)
+# FRONTEND INTERACTIVO (PWA CON DIAGNÓSTICO PLAY BILLING)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -390,15 +390,22 @@ async def home():
             window.abrirPaywall = () => document.getElementById('paywallModal').style.display = 'flex';
             window.cerrarPaywall = () => document.getElementById('paywallModal').style.display = 'none';
 
+            // PASARELA OFICIAL DE PAGO CON DIAGNÓSTICO EN VIVO
             window.suscribirse = async (plan) => {
                 const productId = plan === 'anual' ? 'cuponia_premium_anual' : 'cuponia_premium_mensual';
                 const price = plan === 'anual' ? '14.99' : '1.99';
 
-                // 1. INTENTO OFICIAL GOOGLE PLAY BILLING (TWA)
+                // 1. SI ESTAMOS DENTRO DE LA APP DE GOOGLE PLAY (TWA)
                 if (window.getDigitalGoodsService) {
                     try {
                         const service = await window.getDigitalGoodsService("https://play.google.com/billing");
                         
+                        // Verificamos si Google Play ya reconoce el ID del producto
+                        const details = await service.getDetails([productId]);
+                        if (!details || details.length === 0) {
+                            throw new Error(`Google Play aún no tiene activo el producto '${productId}'. Comprueba que esté activado en la Play Console.`);
+                        }
+
                         const paymentMethodData = [{
                             supportedMethods: "https://play.google.com/billing",
                             data: { sku: productId }
@@ -423,26 +430,12 @@ async def home():
                         await window.loadCoupons();
                         return;
                     } catch (err) {
-                        console.log("Fallo conectando a Play Billing (posiblemente aún propagando productos):", err);
+                        console.error("Detalle error Google Play:", err);
+                        alert(`⚠️ Diagnóstico Google Play: ${err.name || 'Error'} -> ${err.message || err}`);
+                        return;
                     }
-                }
-
-                // 2. MODO FALLBACK / BETA TESTING
-                try {
-                    const res = await authFetch('/usuario/suscribir', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ plan: plan })
-                    });
-                    const d = await res.json();
-                    if (d.ok) {
-                        alert(`ℹ️ [Suscripción Activada]: Se ha desbloqueado CupónIA Premium (${plan.toUpperCase()}). (Google Play terminará de sincronizar la pasarela en 1-2 horas).`);
-                        window.cerrarPaywall();
-                        await window.cargarSuscripcionUsuario();
-                        await window.loadCoupons();
-                    }
-                } catch(e) {
-                    alert("Error procesando suscripción");
+                } else {
+                    alert("ℹ️ Estás en el navegador web (no dentro de la app de Google Play). Para pagar con Google Play debes abrir la app instalada.");
                 }
             };
 
@@ -684,7 +677,7 @@ async def home():
                 }
             };
 
-            // CÁMARA IN-APP WEBRTC
+            // CÁMARA IN-APP
             let cameraStream = null;
             let torchActive = false;
 
