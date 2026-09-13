@@ -4,7 +4,7 @@ import json
 import re
 from google import genai
 
-MODEL_NAME = "gemini-1.5-flash"
+MODEL_NAME = "gemini-3.1-flash-lite"
 
 def extraer_datos_cupon(ruta_imagen):
     """
