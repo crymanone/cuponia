@@ -74,7 +74,7 @@ async def privacy():
     """
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (PWA + BRANDING CUPÓNIA)
+# FRONTEND INTERACTIVO (PWA CON CÁMARA 100% ADAPTABLE)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -84,7 +84,7 @@ async def home():
     <head>
         <title>CupónIA - Cartera y Lista de la Compra</title>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
         <link rel="manifest" href="/manifest.json">
         <link rel="icon" type="image/png" href="/cuponia_icon.png">
         <meta name="theme-color" content="#004d40">
@@ -144,13 +144,110 @@ async def home():
             #barcodeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
             .barcode-box { background: white; padding: 25px 20px; border-radius: 20px; width: 90%; max-width: 360px; text-align: center; }
             
-            #cameraModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 2000; flex-direction: column; justify-content: space-between; }
-            .camera-header { padding: 15px 20px; display: flex; justify-content: space-between; color: white; background: rgba(0,0,0,0.6); }
-            .camera-viewport { position: relative; width: 100%; flex: 1; display: flex; justify-content: center; align-items: center; }
-            #cameraVideo { width: 100%; height: 100%; object-fit: cover; }
-            .camera-guide { position: absolute; width: 85%; height: 50%; border: 2px dashed #00e676; border-radius: 16px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); pointer-events: none; }
-            .camera-footer { padding: 25px 0 45px 0; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; gap: 30px; }
-            .btn-shutter { width: 75px; height: 75px; border-radius: 50%; background: white; border: 5px solid var(--primary); cursor: pointer; }
+            /* --- NUEVOS ESTILOS CÁMARA ADAPTABLE (100dvh + Flexbox Seguro) --- */
+            #cameraModal { 
+                display: none; 
+                position: fixed; 
+                top: 0; 
+                left: 0; 
+                width: 100%; 
+                height: 100vh; 
+                height: 100dvh; /* Altura dinámica que se adapta a las barras de Android */
+                background: #000; 
+                z-index: 2000; 
+                flex-direction: column; 
+                box-sizing: border-box;
+                overflow: hidden;
+            }
+            .camera-header { 
+                width: 100%; 
+                padding: 12px 16px; 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
+                box-sizing: border-box; 
+                color: white; 
+                z-index: 10; 
+                background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+                flex-shrink: 0;
+            }
+            .camera-viewport { 
+                position: relative; 
+                width: 100%; 
+                flex: 1; 
+                min-height: 0; /* Evita que el vídeo empuje la barra inferior fuera de pantalla */
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                overflow: hidden; 
+            }
+            #cameraVideo { 
+                width: 100%; 
+                height: 100%; 
+                object-fit: cover; 
+            }
+            .camera-guide { 
+                position: absolute; 
+                width: 80%; 
+                max-width: 320px; 
+                height: 60%; 
+                max-height: 380px; 
+                border: 2px dashed #00e676; 
+                border-radius: 20px; 
+                box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); 
+                pointer-events: none; 
+                display: flex;
+                justify-content: center;
+                align-items: flex-end;
+                padding-bottom: 15px;
+            }
+            .camera-guide-text { 
+                color: white; 
+                font-size: 11px; 
+                font-weight: bold; 
+                background: rgba(0,0,0,0.7); 
+                padding: 4px 12px; 
+                border-radius: 20px; 
+            }
+            .camera-footer { 
+                width: 100%; 
+                padding: 15px 0 calc(15px + env(safe-area-inset-bottom, 10px)) 0; 
+                background: rgba(0,0,0,0.85); 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                gap: 40px; 
+                flex-shrink: 0; /* Prohíbe que el botón se salga de la pantalla */
+                box-sizing: border-box;
+            }
+            .btn-shutter { 
+                width: 70px; 
+                height: 70px; 
+                border-radius: 50%; 
+                background: white; 
+                border: 4px solid var(--primary); 
+                box-shadow: 0 0 20px rgba(255,255,255,0.4); 
+                cursor: pointer; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                transition: 0.1s; 
+            }
+            .btn-shutter:active { transform: scale(0.92); }
+            .btn-shutter-inner { width: 52px; height: 52px; border-radius: 50%; background: var(--primary); }
+            .btn-camera-action { 
+                background: rgba(255,255,255,0.25); 
+                border: none; 
+                color: white; 
+                border-radius: 50%; 
+                width: 42px; 
+                height: 42px; 
+                font-size: 18px; 
+                cursor: pointer; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+            }
         </style>
     </head>
     <body>
@@ -255,19 +352,23 @@ async def home():
             </div>
         </div>
 
-        <!-- MODAL CÁMARA IN-APP -->
+        <!-- MODAL CÁMARA IN-APP (100% Adaptable) -->
         <div id="cameraModal">
             <div class="camera-header">
-                <button id="btnTorch" style="background:none; border:none; font-size:20px; color:white;" onclick="toggleTorch()">🔦</button>
-                <span style="font-weight:bold;">Escanear Vale / Cupón</span>
-                <button style="background:none; border:none; font-size:20px; color:white;" onclick="cerrarCamara()">✕</button>
+                <button id="btnTorch" class="btn-camera-action" onclick="toggleTorch()" title="Encender Linterna">🔦</button>
+                <span style="font-weight:bold; font-size:14px;">📸 Encuadra el Cupón</span>
+                <button class="btn-camera-action" onclick="cerrarCamara()">✕</button>
             </div>
             <div class="camera-viewport">
                 <video id="cameraVideo" autoplay playsinline></video>
-                <div class="camera-guide"></div>
+                <div class="camera-guide">
+                    <span class="camera-guide-text">Alinea el cupón aquí</span>
+                </div>
             </div>
             <div class="camera-footer">
-                <button id="btnCapturar" class="btn-shutter" onclick="capturarFoto()"></button>
+                <button id="btnCapturar" class="btn-shutter" onclick="capturarFoto()">
+                    <div class="btn-shutter-inner"></div>
+                </button>
             </div>
         </div>
         <canvas id="cameraCanvas" style="display:none;"></canvas>
@@ -316,9 +417,7 @@ async def home():
                 return fetch(url, opts);
             }
 
-            // =========================================================================
-            // LISTA DE LA COMPRA INTELIGENTE & CRUCE CON CUPONES
-            // =========================================================================
+            // LISTA DE LA COMPRA INTELIGENTE
             window.loadShoppingList = async () => {
                 try {
                     const res = await authFetch('/lista');
@@ -409,10 +508,9 @@ async def home():
 
             window.iniciarDictadoVoz = () => {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) return alert("Tu móvil no soporta dictado por voz en el navegador. Usa el teclado.");
+                if (!SpeechRecognition) return alert("Tu móvil no soporta dictado por voz. Usa el teclado.");
 
                 const micBtn = document.getElementById('btnMic');
-
                 if (isListening) {
                     if (recognition) recognition.stop();
                     return;
@@ -446,9 +544,7 @@ async def home():
                 recognition.start();
             };
 
-            // =========================================================================
             // LÓGICA DE CUPONES
-            // =========================================================================
             window.loadCoupons = async () => {
                 try {
                     const res = await authFetch('/cupones');
@@ -558,7 +654,7 @@ async def home():
                 }
             };
 
-            // CÁMARA IN-APP
+            // CÁMARA IN-APP WEBRTC ADAPTABLE
             let cameraStream = null;
             let torchActive = false;
 
@@ -567,6 +663,7 @@ async def home():
                 const video = document.getElementById('cameraVideo');
                 modal.style.display = 'flex';
                 torchActive = false;
+                document.getElementById('btnTorch').style.background = "rgba(255,255,255,0.25)";
 
                 try {
                     cameraStream = await navigator.mediaDevices.getUserMedia({
@@ -582,25 +679,38 @@ async def home():
             };
 
             window.cerrarCamara = () => {
+                const modal = document.getElementById('cameraModal');
+                const video = document.getElementById('cameraVideo');
                 if (cameraStream) {
                     cameraStream.getTracks().forEach(track => track.stop());
                     cameraStream = null;
                 }
-                document.getElementById('cameraModal').style.display = 'none';
+                if (video) video.srcObject = null;
+                modal.style.display = 'none';
+                torchActive = false;
             };
 
             window.toggleTorch = async () => {
                 if (!cameraStream) return;
                 const track = cameraStream.getVideoTracks()[0];
+                if (!track) return;
                 const capabilities = track.getCapabilities ? track.getCapabilities() : {};
                 if (!capabilities.torch) return alert("Flash no disponible");
                 torchActive = !torchActive;
                 await track.applyConstraints({ advanced: [{ torch: torchActive }] });
+                document.getElementById('btnTorch').style.background = torchActive ? "#ffd54f" : "rgba(255,255,255,0.25)";
             };
 
             window.capturarFoto = () => {
                 const video = document.getElementById('cameraVideo');
                 const canvas = document.getElementById('cameraCanvas');
+                const btn = document.getElementById('btnCapturar');
+                
+                if (!video || !canvas || !cameraStream) return;
+
+                btn.disabled = true;
+                btn.style.opacity = "0.5";
+
                 canvas.width = video.videoWidth || 1280;
                 canvas.height = video.videoHeight || 720;
                 const ctx = canvas.getContext('2d');
@@ -608,6 +718,11 @@ async def home():
 
                 canvas.toBlob(async (blob) => {
                     window.cerrarCamara();
+                    btn.disabled = false;
+                    btn.style.opacity = "1";
+
+                    if (!blob) return alert("Error al capturar la imagen.");
+
                     const fd = new FormData();
                     fd.append("file", blob, "cupon.jpg");
                     await window.procesarSubida(fd);
