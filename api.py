@@ -66,10 +66,15 @@ async def get_favicon():
 
 @app.get("/privacy-policy", response_class=HTMLResponse)
 async def privacy():
-    return """<html><body><h1>Política de Privacidad de CuponIA</h1><p>CuponIA solo usa la cámara y el micrófono para escanear tus cupones y dictar tu lista de la compra de forma privada y segura.</p></body></html>"""
+    return """
+    <html><body>
+    <h1>Política de Privacidad de CuponIA</h1>
+    <p>CuponIA es una aplicación desarrollada por Juan Carlos Roade Martínez. Solo usamos la cámara y el micrófono para escanear tus cupones y dictar tu lista de la compra de forma privada y segura.</p>
+    </body></html>
+    """
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (PWA + LISTA DE LA COMPRA POR VOZ)
+# FRONTEND INTERACTIVO (PWA + FOOTER LEGAL JUAN CARLOS ROADE)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -126,7 +131,7 @@ async def home():
             .tag-ok { background: #e8f5e9; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             .tag-expired { background: #eeeeee; color: #9e9e9e; text-decoration: line-through; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             
-            /* --- ESTILOS DE LA LISTA DE LA COMPRA INTELIGENTE --- */
+            /* Lista de la compra */
             .shopping-input-box { display: flex; gap: 8px; margin-bottom: 15px; align-items: center; }
             .shopping-input { flex: 1; padding: 14px 16px; border: 2px solid #b2dfdb; border-radius: 12px; font-size: 15px; outline: none; font-weight: 600; box-sizing: border-box; }
             .btn-mic { width: 50px; height: 50px; border-radius: 12px; background: var(--primary-light); color: white; border: none; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
@@ -134,6 +139,10 @@ async def home():
             .shopping-item.checked span.product-name { text-decoration: line-through; color: #9e9e9e; }
             .badge-coupon-match { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; margin-left: 8px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
             
+            /* Footer Legal */
+            .app-footer { margin-top: 40px; padding: 25px; background: var(--primary); color: white; text-align: center; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,77,64,0.2); }
+            .legal-text { font-size: 10px; margin-top: 10px; opacity: 0.7; line-height: 1.4; }
+
             #barcodeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
             .barcode-box { background: white; padding: 25px 20px; border-radius: 20px; width: 90%; max-width: 360px; text-align: center; }
             
@@ -175,7 +184,7 @@ async def home():
                 <div style="font-size:11px; opacity:0.8;">En cupones activos listos para canjear</div>
             </div>
 
-            <!-- NUEVA SECCIÓN: LISTA INTELIGENTE DE LA COMPRA -->
+            <!-- LISTA INTELIGENTE DE LA COMPRA -->
             <div class="card" style="border: 2px solid #b2dfdb;">
                 <h3>📝 Lista de la Compra Inteligente</h3>
                 <p style="font-size:12px; color:#666; margin-top:-5px; margin-bottom:15px;">Escribe o pulsa el micro para dictar productos. ¡Te avisaremos si tienes cupón!</p>
@@ -218,6 +227,17 @@ async def home():
                 </div>
 
                 <div id="couponsList">Cargando cupones...</div>
+            </div>
+
+            <!-- FOOTER LEGAL CON AUTORÍA OFICIAL -->
+            <div class="app-footer">
+                <div style="font-weight:700; font-size:16px;">CuponIA © <span id="year"></span></div>
+                <div style="margin-top:5px; font-weight:500;">Juan Carlos Roade Martínez</div>
+                <div class="legal-text">
+                    Aplicación independiente desarrollada como utilidad personal de ahorro familiar.<br>
+                    No afiliada ni respaldada por Carrefour, Dia, Mercadona, Lidl, Eroski ni ninguna cadena de supermercados.<br>
+                    Todos los derechos reservados.
+                </div>
             </div>
         </div>
 
@@ -269,6 +289,9 @@ async def home():
             window.selectedMarket = 'todos';
             window.currentCouponIdModal = null;
 
+            // Inyectamos el año dinámico en el footer legal
+            document.getElementById('year').innerText = new Date().getFullYear();
+
             onAuthStateChanged(auth, async (u) => {
                 if (u) {
                     window.userToken = await u.getIdToken();
@@ -297,7 +320,7 @@ async def home():
             }
 
             // =========================================================================
-            // LÓGICA DE LA LISTA DE LA COMPRA INTELIGENTE & CRUCE CON CUPONES
+            // LISTA DE LA COMPRA INTELIGENTE & CRUCE CON CUPONES
             // =========================================================================
             window.loadShoppingList = async () => {
                 try {
@@ -307,7 +330,6 @@ async def home():
                 } catch(e) {}
             };
 
-            // Algoritmo que busca si un producto de la lista tiene cupón disponible
             function encontrarCuponMatch(nombreProducto) {
                 if (!window.allCoupons || !nombreProducto) return null;
                 const pLower = nombreProducto.toLowerCase().trim();
@@ -327,7 +349,7 @@ async def home():
             window.renderShoppingList = () => {
                 const container = document.getElementById('shoppingListContainer');
                 if (window.shoppingList.length === 0) {
-                    container.innerHTML = "<div style='text-align:center; padding:15px; color:#90a4ae; font-size:13px;'>Tu lista está vacía. ¡Prueba a dictar un producto!</div>";
+                    container.innerHTML = "<div style='text-align:center; padding:15px; color:#90a4ae; font-size:13px;'>Tu lista está vacía. ¡Prueba a dictar un producto con el micro!</div>";
                     return;
                 }
 
@@ -384,15 +406,13 @@ async def home():
                 await window.loadShoppingList();
             };
 
-            // DICTADO POR VOZ (Web Speech API)
+            // DICTADO POR VOZ
             let recognition = null;
             let isListening = false;
 
             window.iniciarDictadoVoz = () => {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) {
-                    return alert("Tu móvil no soporta dictado por voz en el navegador. Usa el teclado.");
-                }
+                if (!SpeechRecognition) return alert("Tu móvil no soporta dictado por voz en el navegador. Usa el teclado.");
 
                 const micBtn = document.getElementById('btnMic');
 
@@ -418,9 +438,7 @@ async def home():
                     await window.agregarItemManual();
                 };
 
-                recognition.onerror = (e) => {
-                    console.log("Error voz:", e);
-                };
+                recognition.onerror = (e) => console.log("Error voz:", e);
 
                 recognition.onend = () => {
                     isListening = false;
@@ -439,7 +457,7 @@ async def home():
                     const res = await authFetch('/cupones');
                     window.allCoupons = await res.json();
                     window.renderCoupons();
-                    if (window.shoppingList.length > 0) window.renderShoppingList(); // Actualiza cruces
+                    if (window.shoppingList.length > 0) window.renderShoppingList();
                 } catch(e) {}
             };
 
@@ -664,7 +682,6 @@ async def eliminar_cupon(cupon_id: int, user_id: str = Depends(get_current_user)
     database.borrar_cupon(cupon_id, user_id)
     return {"ok": True}
 
-# --- NUEVAS RUTAS DE LA LISTA DE LA COMPRA ---
 @app.get("/lista")
 async def listar_items(user_id: str = Depends(get_current_user)):
     return database.obtener_lista_usuario(user_id)
