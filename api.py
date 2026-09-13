@@ -23,14 +23,14 @@ if not firebase_admin._apps:
             cert_dict = json.loads(firebase_json_str)
             cred = credentials.Certificate(cert_dict)
             firebase_admin.initialize_app(cred)
-            print("✅ [BOOT] Firebase Security CuponIA: ACTIVE")
+            print("✅ [BOOT] Firebase Security CupónIA: ACTIVE")
         elif os.path.exists("firebase_credentials.json"):
             cred = credentials.Certificate("firebase_credentials.json")
             firebase_admin.initialize_app(cred)
     except Exception as e:
         print(f"⚠️ [BOOT] Error Firebase: {e}")
 
-app = FastAPI(title="CuponIA Enterprise - Smart Coupon & Shopping List")
+app = FastAPI(title="CupónIA Enterprise - Smart Coupon & Shopping List")
 database.inicializar_db()
 
 async def get_current_user(authorization: str = Header(...)):
@@ -48,7 +48,7 @@ async def get_current_user(authorization: str = Header(...)):
 @app.get("/manifest.json")
 async def get_manifest():
     return JSONResponse({
-        "name": "CuponIA", "short_name": "CuponIA", "start_url": "/", "display": "standalone",
+        "name": "CupónIA", "short_name": "CupónIA", "start_url": "/", "display": "standalone",
         "background_color": "#004d40", "theme_color": "#004d40",
         "icons":[{"src": "/cuponia_icon.png", "sizes": "512x512", "type": "image/png"}]
     })
@@ -68,13 +68,13 @@ async def get_favicon():
 async def privacy():
     return """
     <html><body>
-    <h1>Política de Privacidad de CuponIA</h1>
-    <p>CuponIA es una aplicación desarrollada por Juan Carlos Roade Martínez. Solo usamos la cámara y el micrófono para escanear tus cupones y dictar tu lista de la compra de forma privada y segura.</p>
+    <h1>Política de Privacidad de CupónIA</h1>
+    <p>CupónIA es una aplicación desarrollada por Juan Carlos Roade Martínez. Solo usamos la cámara y el micrófono para escanear tus cupones y dictar tu lista de la compra de forma privada y segura.</p>
     </body></html>
     """
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (PWA + FOOTER LEGAL JUAN CARLOS ROADE)
+# FRONTEND INTERACTIVO (PWA + BRANDING CUPÓNIA)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -82,7 +82,7 @@ async def home():
     <!DOCTYPE html>
     <html lang="es">
     <head>
-        <title>CuponIA - Cartera y Lista de la Compra</title>
+        <title>CupónIA - Cartera y Lista de la Compra</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
         <link rel="manifest" href="/manifest.json">
@@ -121,7 +121,6 @@ async def home():
             .chip { background: #e0f2f1; color: #004d40; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; border: 1px solid #b2dfdb; }
             .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-            /* Tarjetas de Cupones */
             .coupon-item { background: white; border-radius: 16px; border: 1px solid #e0e0e0; margin-bottom: 15px; padding: 16px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
             .coupon-badge-market { background: #e0f2f1; color: #00796b; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block; }
             .coupon-title { font-size: 17px; font-weight: bold; color: #263238; margin: 4px 0; }
@@ -139,7 +138,6 @@ async def home():
             .shopping-item.checked span.product-name { text-decoration: line-through; color: #9e9e9e; }
             .badge-coupon-match { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; margin-left: 8px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
             
-            /* Footer Legal */
             .app-footer { margin-top: 40px; padding: 25px; background: var(--primary); color: white; text-align: center; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,77,64,0.2); }
             .legal-text { font-size: 10px; margin-top: 10px; opacity: 0.7; line-height: 1.4; }
 
@@ -160,7 +158,7 @@ async def home():
         <!-- PANTALLA LOGIN -->
         <div id="loginScreen">
             <img src="/cuponia_icon.png" width="110" style="border-radius:24px; box-shadow:0 10px 30px rgba(0,77,64,0.3); margin-bottom:15px;">
-            <h1 style="color:#004d40; margin:0 0 5px 0;">CuponIA</h1>
+            <h1 style="color:#004d40; margin:0 0 5px 0;">CupónIA</h1>
             <p style="color:#666; margin-bottom:25px;">Tu Cartera Inteligente de Descuentos</p>
             <button class="login-btn" onclick="loginWithGoogle()">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
@@ -173,7 +171,7 @@ async def home():
             <div id="user-info"></div>
 
             <header>
-                <h1>CuponIA</h1>
+                <h1>CupónIA</h1>
                 <div class="tagline">Ahorro Inteligente de Supermercado</div>
             </header>
 
@@ -231,7 +229,7 @@ async def home():
 
             <!-- FOOTER LEGAL CON AUTORÍA OFICIAL -->
             <div class="app-footer">
-                <div style="font-weight:700; font-size:16px;">CuponIA © <span id="year"></span></div>
+                <div style="font-weight:700; font-size:16px;">CupónIA © <span id="year"></span></div>
                 <div style="margin-top:5px; font-weight:500;">Juan Carlos Roade Martínez</div>
                 <div class="legal-text">
                     Aplicación independiente desarrollada como utilidad personal de ahorro familiar.<br>
@@ -289,7 +287,6 @@ async def home():
             window.selectedMarket = 'todos';
             window.currentCouponIdModal = null;
 
-            // Inyectamos el año dinámico en el footer legal
             document.getElementById('year').innerText = new Date().getFullYear();
 
             onAuthStateChanged(auth, async (u) => {
