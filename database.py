@@ -41,7 +41,7 @@ class UsuarioSuscripcion(Base):
     __tablename__ = "usuarios_suscripcion"
     user_id = Column(String, primary_key=True, index=True)
     is_premium = Column(Boolean, default=False)
-    plan = Column(String, default="free")                # "free", "mensual", "anual"
+    plan = Column(String, default="free")                
     expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -57,7 +57,6 @@ def inicializar_db():
 # --- CONTROL DE SUSCRIPCIONES Y LÍMITES ---
 def obtener_perfil_suscripcion(user_uid):
     db = SessionLocal()
-    # 1. Comprobamos si tiene suscripción activa
     sub = db.query(UsuarioSuscripcion).filter(UsuarioSuscripcion.user_id == user_uid).first()
     is_prem = False
     plan = "free"
@@ -67,11 +66,9 @@ def obtener_perfil_suscripcion(user_uid):
             is_prem = True
             plan = sub.plan
         else:
-            # Ha caducado
             sub.is_premium = False
             db.commit()
 
-    # 2. Contamos cuántos cupones activos (sin usar) tiene guardados
     activos = db.query(Cupon).filter(Cupon.user_id == user_uid, Cupon.is_used == False).count()
     db.close()
     
@@ -99,6 +96,24 @@ def activar_suscripcion_db(user_uid, plan="mensual"):
 
         db.commit()
         return True
+    except Exception:
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+# NUEVA FUNCIÓN PARA RESTABLECER A FREE EN PRUEBAS
+def cancelar_suscripcion_db(user_uid):
+    db = SessionLocal()
+    try:
+        sub = db.query(UsuarioSuscripcion).filter(UsuarioSuscripcion.user_id == user_uid).first()
+        if sub:
+            sub.is_premium = False
+            sub.plan = "free"
+            sub.expires_at = None
+            db.commit()
+            return True
+        return False
     except Exception:
         db.rollback()
         return False

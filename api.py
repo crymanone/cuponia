@@ -73,7 +73,6 @@ async def privacy():
     </body></html>
     """
 
-# APRETÓN DE MANOS OFICIAL GOOGLE PLAY (TWA BILLING)
 @app.get("/.well-known/assetlinks.json")
 async def asset_links():
     return JSONResponse(content=[{
@@ -88,7 +87,7 @@ async def asset_links():
     }])
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (PWA CON DIAGNÓSTICO PLAY BILLING)
+# FRONTEND INTERACTIVO (CON INTERRUPTOR DE PRUEBAS FREE/PREMIUM)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -113,6 +112,7 @@ async def home():
             #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%; text-align: center; }
             .login-btn { background: white; color: #444; border: 1px solid #ddd; padding: 15px 30px; border-radius: 50px; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
             
+            /* Header Usuario Flotante */
             #user-info { position: absolute; top: 15px; right: 15px; z-index: 100; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.95); padding: 5px 12px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); backdrop-filter: blur(5px); }
             .user-name { font-size: 12px; font-weight: 600; color: #37474f; }
             .badge-plan { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 800; cursor: pointer; }
@@ -138,6 +138,7 @@ async def home():
             .chip { background: #e0f2f1; color: #004d40; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; border: 1px solid #b2dfdb; }
             .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
+            /* Tarjetas de Cupones */
             .coupon-item { background: white; border-radius: 16px; border: 1px solid #e0e0e0; margin-bottom: 15px; padding: 16px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
             .coupon-badge-market { background: #e0f2f1; color: #00796b; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block; }
             .coupon-title { font-size: 17px; font-weight: bold; color: #263238; margin: 4px 0; }
@@ -147,6 +148,7 @@ async def home():
             .tag-ok { background: #e8f5e9; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             .tag-expired { background: #eeeeee; color: #9e9e9e; text-decoration: line-through; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             
+            /* Lista de la compra */
             .shopping-input-box { display: flex; gap: 8px; margin-bottom: 15px; align-items: center; }
             .shopping-input { flex: 1; padding: 14px 16px; border: 2px solid #b2dfdb; border-radius: 12px; font-size: 15px; outline: none; font-weight: 600; box-sizing: border-box; }
             .btn-mic { width: 50px; height: 50px; border-radius: 12px; background: var(--primary-light); color: white; border: none; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
@@ -284,7 +286,9 @@ async def home():
                     <div style="font-size:18px; font-weight:bold; color:#004d40; margin-top:4px;">1,99 € <span style="font-size:12px; font-weight:normal; color:#666;">/ mes</span></div>
                 </div>
 
-                <button class="btn" style="background:#eee; color:#444; margin-top:10px;" onclick="cerrarPaywall()">Volver</button>
+                <!-- BOTÓN DE DESARROLLADOR / RESTABLECER A FREE -->
+                <button class="btn" style="background:#ffebee; color:#c62828; margin-top:10px; font-size:12px; padding:10px;" onclick="cancelarSuscripcionTest()">🔄 Restablecer cuenta a Free (Modo Test)</button>
+                <button class="btn" style="background:#eee; color:#444; margin-top:6px; font-size:12px; padding:10px;" onclick="cerrarPaywall()">Volver</button>
             </div>
         </div>
 
@@ -390,17 +394,25 @@ async def home():
             window.abrirPaywall = () => document.getElementById('paywallModal').style.display = 'flex';
             window.cerrarPaywall = () => document.getElementById('paywallModal').style.display = 'none';
 
-            // PASARELA OFICIAL DE PAGO CON DIAGNÓSTICO EN VIVO
+            // RESTABLECER A FREE (MODO TEST)
+            window.cancelarSuscripcionTest = async () => {
+                if (confirm("¿Quieres volver a la versión Free para probar los límites?")) {
+                    await authFetch('/usuario/cancelar', { method: 'POST' });
+                    alert("✅ Cuenta restablecida a modo Free (Límite de 5 cupones activo).");
+                    window.cerrarPaywall();
+                    await window.cargarSuscripcionUsuario();
+                    await window.loadCoupons();
+                }
+            };
+
+            // PASARELA DE PAGO CON DIAGNÓSTICO EN VIVO
             window.suscribirse = async (plan) => {
                 const productId = plan === 'anual' ? 'cuponia_premium_anual' : 'cuponia_premium_mensual';
                 const price = plan === 'anual' ? '14.99' : '1.99';
 
-                // 1. SI ESTAMOS DENTRO DE LA APP DE GOOGLE PLAY (TWA)
                 if (window.getDigitalGoodsService) {
                     try {
                         const service = await window.getDigitalGoodsService("https://play.google.com/billing");
-                        
-                        // Verificamos si Google Play ya reconoce el ID del producto
                         const details = await service.getDetails([productId]);
                         if (!details || details.length === 0) {
                             throw new Error(`Google Play aún no tiene activo el producto '${productId}'. Comprueba que esté activado en la Play Console.`);
@@ -430,12 +442,27 @@ async def home():
                         await window.loadCoupons();
                         return;
                     } catch (err) {
-                        console.error("Detalle error Google Play:", err);
+                        console.error("Play billing error:", err);
                         alert(`⚠️ Diagnóstico Google Play: ${err.name || 'Error'} -> ${err.message || err}`);
                         return;
                     }
-                } else {
-                    alert("ℹ️ Estás en el navegador web (no dentro de la app de Google Play). Para pagar con Google Play debes abrir la app instalada.");
+                }
+
+                try {
+                    const res = await authFetch('/usuario/suscribir', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ plan: plan })
+                    });
+                    const d = await res.json();
+                    if (d.ok) {
+                        alert(`ℹ️ [Suscripción Activada]: Se ha desbloqueado CupónIA Premium (${plan.toUpperCase()}).`);
+                        window.cerrarPaywall();
+                        await window.cargarSuscripcionUsuario();
+                        await window.loadCoupons();
+                    }
+                } catch(e) {
+                    alert("Error procesando suscripción");
                 }
             };
 
@@ -677,7 +704,7 @@ async def home():
                 }
             };
 
-            // CÁMARA IN-APP
+            // CÁMARA IN-APP WEBRTC CON COMPRESIÓN
             let cameraStream = null;
             let torchActive = false;
 
@@ -816,6 +843,12 @@ async def get_sub_status(user_id: str = Depends(get_current_user)):
 async def suscribir_usuario(data: dict = Body(...), user_id: str = Depends(get_current_user)):
     plan = data.get("plan", "mensual")
     database.activar_suscripcion_db(user_id, plan=plan)
+    return {"ok": True}
+
+# ENDPOINT PARA VOLVER A FREE EN PRUEBAS
+@app.post("/usuario/cancelar")
+async def cancelar_sub(user_id: str = Depends(get_current_user)):
+    database.cancelar_suscripcion_db(user_id)
     return {"ok": True}
 
 @app.post("/scan")
