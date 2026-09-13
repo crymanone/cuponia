@@ -1,0 +1,8 @@
+cat <<EOF > .gitignore
+__pycache__/
+*.pyc
+*.db
+temp_*
+.env
+firebase_credentials.json
+EOF
