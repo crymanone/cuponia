@@ -282,6 +282,7 @@ async def home():
                 const today = new Date(); today.setHours(0,0,0,0);
 
                 const filtered = window.allCoupons.filter(c => {
+                    if (c.is_used) return false; // 👈 ¡MAGIA! Oculta automáticamente los ya canjeados
                     if (window.selectedMarket === 'todos') return true;
                     return c.supermercado.toLowerCase().includes(window.selectedMarket);
                 });
@@ -365,6 +366,7 @@ async def home():
                 if (!window.currentCouponIdModal) return;
                 await authFetch(`/cupones/${window.currentCouponIdModal}/toggle_used`, {method:'POST'});
                 window.cerrarBarcode();
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]); // Vibración sutil de ahorro
                 window.loadCoupons();
             };
 
