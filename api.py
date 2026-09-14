@@ -42,6 +42,9 @@ async def get_current_user(authorization: str = Header(...)):
     except Exception:
         raise HTTPException(status_code=401, detail="Sesión expirada")
 
+# ==============================================================================
+# ASSETS PWA Y GOOGLE PLAY (ASSETLINKS DIGITALES CON FIRMA OFICIAL)
+# ==============================================================================
 @app.get("/manifest.json")
 async def get_manifest():
     return JSONResponse({
@@ -70,6 +73,7 @@ async def privacy():
     </body></html>
     """
 
+# APRETÓN DE MANOS OFICIAL GOOGLE PLAY (CON LA CLAVE MAESTRA DE GOOGLE + SUBIDA)
 @app.get("/.well-known/assetlinks.json")
 async def asset_links():
     return JSONResponse(content=[{
@@ -85,7 +89,7 @@ async def asset_links():
     }])
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (PWA CON PROTECCIÓN ANTI-CRASH HONOR)
+# FRONTEND INTERACTIVO (CON PAGO DIRECTO DIGITAL GOODS API)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -107,9 +111,7 @@ async def home():
             body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); margin: 0; color: #263238; display: flex; justify-content: center; min-height: 100vh; padding-bottom: 50px; }
             .app-container { width: 100%; max-width: 600px; padding: 15px; display: none; position: relative; }
             
-            /* 🚨 CAMBIO VITAL: El Login siempre visible por defecto para que no se quede la pantalla en blanco */
             #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%; text-align: center; }
-            
             .login-btn { background: white; color: #444; border: 1px solid #ddd; padding: 15px 30px; border-radius: 50px; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
             
             #user-info { position: absolute; top: 15px; right: 15px; z-index: 100; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.95); padding: 5px 12px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); backdrop-filter: blur(5px); }
@@ -167,6 +169,7 @@ async def home():
             #barcodeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
             .barcode-box { background: white; padding: 25px 20px; border-radius: 20px; width: 90%; max-width: 360px; text-align: center; }
             
+            /* CÁMARA (Nativa del navegador) */
             #cameraModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100dvh; background: #000; z-index: 2000; flex-direction: column; box-sizing: border-box; overflow: hidden; }
             .camera-header { width: 100%; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; color: white; z-index: 10; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); flex-shrink: 0; }
             .camera-viewport { position: relative; width: 100%; flex: 1; min-height: 0; display: flex; justify-content: center; align-items: center; overflow: hidden; }
@@ -195,6 +198,7 @@ async def home():
 
         <div id="appScreen" class="app-container">
             <div id="user-info"></div>
+
             <header>
                 <h1>CupónIA</h1>
                 <div class="tagline">Ahorro Inteligente de Supermercado</div>
@@ -341,23 +345,29 @@ async def home():
 
             document.getElementById('year').innerText = new Date().getFullYear();
 
-            // Retrasamos el inicio de Firebase 1 segundo para evadir el bloqueo nativo
+            // Bloque anti-pantalla en blanco
+            let firebaseRespondio = false;
             setTimeout(() => {
-                onAuthStateChanged(auth, async (u) => {
-                    if (u) {
-                        window.userToken = await u.getIdToken();
-                        document.getElementById('loginScreen').style.display = 'none';
-                        document.getElementById('appScreen').style.display = 'block';
-                        
-                        await window.cargarSuscripcionUsuario();
-                        await window.loadCoupons();
-                        await window.loadShoppingList();
-                    } else {
-                        document.getElementById('loginScreen').style.display = 'flex';
-                        document.getElementById('appScreen').style.display = 'none';
-                    }
-                });
-            }, 800);
+                if (!firebaseRespondio && !window.userToken) {
+                    document.getElementById('loginScreen').style.display = 'flex';
+                }
+            }, 1000);
+
+            onAuthStateChanged(auth, async (u) => {
+                firebaseRespondio = true;
+                if (u) {
+                    window.userToken = await u.getIdToken();
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('appScreen').style.display = 'block';
+                    
+                    await window.cargarSuscripcionUsuario();
+                    await window.loadCoupons();
+                    await window.loadShoppingList();
+                } else {
+                    document.getElementById('loginScreen').style.display = 'flex';
+                    document.getElementById('appScreen').style.display = 'none';
+                }
+            });
 
             window.loginWithGoogle = () => {
                 signInWithPopup(auth, provider).catch(e => {
@@ -407,13 +417,45 @@ async def home():
                 }
             };
 
-            // PASARELA RESILIENTE (FLUTTER + WEB)
+            // PASARELA DE PAGO DIRECTA GOOGLE PLAY BILLING
             window.suscribirse = async (plan) => {
-                if (window.FlutterPaymentChannel) {
-                    window.FlutterPaymentChannel.postMessage(plan);
-                    return;
+                const productId = plan === 'anual' ? 'cuponia_premium_anual' : 'cuponia_premium_mensual';
+                const price = plan === 'anual' ? '14.99' : '1.99';
+
+                if (window.getDigitalGoodsService) {
+                    try {
+                        const service = await window.getDigitalGoodsService("https://play.google.com/billing");
+                        
+                        const paymentMethodData = [{
+                            supportedMethods: "https://play.google.com/billing",
+                            data: { sku: productId }
+                        }];
+                        
+                        const request = new PaymentRequest(paymentMethodData, {
+                            total: { label: `CupónIA Premium ${plan}`, amount: { currency: "EUR", value: price } }
+                        });
+                        
+                        const paymentResponse = await request.show();
+                        
+                        await authFetch('/usuario/suscribir', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ plan: plan, purchaseToken: paymentResponse.details.purchaseToken })
+                        });
+                        
+                        await paymentResponse.complete("success");
+                        alert(`🎉 ¡Suscripción oficial completada con Google Play!`);
+                        window.cerrarPaywall();
+                        await window.cargarSuscripcionUsuario();
+                        await window.loadCoupons();
+                        return;
+                    } catch (err) {
+                        console.log("Fallo conectando a Play Billing:", err);
+                        // Fallback silenciado al modo web
+                    }
                 }
-                
+
+                // Fallback Modo Desarrollador (Si falla Play Store o estamos en Chrome normal)
                 try {
                     const res = await authFetch('/usuario/suscribir', {
                         method: 'POST',
@@ -422,7 +464,7 @@ async def home():
                     });
                     const d = await res.json();
                     if (d.ok) {
-                        alert(`ℹ️ [Modo Web]: Activado CupónIA Premium (${plan.toUpperCase()}) en simulación.`);
+                        alert(`ℹ️ [Suscripción Activada en Modo Pruebas].`);
                         window.cerrarPaywall();
                         await window.cargarSuscripcionUsuario();
                         await window.loadCoupons();
@@ -430,18 +472,6 @@ async def home():
                 } catch(e) {
                     alert("Error procesando suscripción");
                 }
-            };
-
-            window.onFlutterPaymentSuccess = async (plan) => {
-                await authFetch('/usuario/suscribir', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plan: plan })
-                });
-                alert("🎉 ¡Pago verificado con Google Play y RevenueCat! Bienvenido a CupónIA Premium.");
-                window.cerrarPaywall();
-                await window.cargarSuscripcionUsuario();
-                await window.loadCoupons();
             };
 
             // LISTA DE LA COMPRA INTELIGENTE
