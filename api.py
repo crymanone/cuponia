@@ -43,7 +43,7 @@ async def get_current_user(authorization: str = Header(...)):
         raise HTTPException(status_code=401, detail="Sesión expirada")
 
 # ==============================================================================
-# ASSETS PWA Y GOOGLE PLAY (DOBLE FIRMA OFICIAL SELLADA)
+# ASSETS PWA Y GOOGLE PLAY
 # ==============================================================================
 @app.get("/manifest.json")
 async def get_manifest():
@@ -73,7 +73,6 @@ async def privacy():
     </body></html>
     """
 
-# APRETÓN DE MANOS OFICIAL GOOGLE PLAY (CON LA CLAVE MAESTRA DE GOOGLE + SUBIDA)
 @app.get("/.well-known/assetlinks.json")
 async def asset_links():
     return JSONResponse(content=[{
@@ -82,14 +81,14 @@ async def asset_links():
             "namespace": "android_app",
             "package_name": "com.cuponia.app",
             "sha256_cert_fingerprints": [
-                "0D:8A:48:EF:9C:09:C7:B4:52:3D:B7:BE:EA:D1:4A:32:D1:EE:39:E2:C5:1B:94:9F:43:4B:DF:8C:03:11:D7:05", # 🔑 CLAVE DE FIRMA DE GOOGLE (CLÁSICA)
-                "6C:5A:00:89:10:3F:70:99:22:B8:06:13:C3:53:BE:D6:F1:04:BD:0C:EE:E1:69:91:70:4A:C6:AD:11:F6:C9:41"  # 🔑 CLAVE DE SUBIDA DE PWABUILDER
+                "0D:8A:48:EF:9C:09:C7:B4:52:3D:B7:BE:EA:D1:4A:32:D1:EE:39:E2:C5:1B:94:9F:43:4B:DF:8C:03:11:D7:05",
+                "6C:5A:00:89:10:3F:70:99:22:B8:06:13:C3:53:BE:D6:F1:04:BD:0C:EE:E1:69:91:70:4A:C6:AD:11:F6:C9:41"
             ]
         }
     }])
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (PWA NATIVA COMPLETA)
+# FRONTEND INTERACTIVO (CON PUENTE NATIVO FLUTTER + REVENUECAT)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -134,6 +133,7 @@ async def home():
             .btn { width: 100%; padding: 15px; border: none; border-radius: 14px; font-size: 15px; font-weight: 700; color: white; cursor: pointer; transition: 0.2s; box-sizing: border-box; text-align: center; }
             .btn-green { background: linear-gradient(135deg, #00796b, #004d40); box-shadow: 0 4px 12px rgba(0,77,64,0.3); }
             .btn-orange { background: linear-gradient(135deg, #ff6f00, #ffa000); box-shadow: 0 4px 12px rgba(255,111,0,0.3); }
+            .btn-gold { background: linear-gradient(135deg, #ffd700, #ff9800); color: #3e2723; font-weight: 900; box-shadow: 0 4px 12px rgba(255,152,0,0.4); }
             
             .filters-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; scrollbar-width: none; }
             .chip { background: #e0f2f1; color: #004d40; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; border: 1px solid #b2dfdb; }
@@ -404,60 +404,43 @@ async def home():
                 }
             };
 
-            // PASARELA OFICIAL DE PAGO CON GOOGLE PLAY BILLING
+            // =========================================================================
+            // 🌉 EL PUENTE NATIVO FLUTTER + REVENUECAT
+            // =========================================================================
             window.suscribirse = async (plan) => {
-                const productId = plan === 'anual' ? 'cuponia_premium_anual' : 'cuponia_premium_mensual';
-                const price = plan === 'anual' ? '14.99' : '1.99';
-                let playBillingCompleted = false;
-
-                if (window.getDigitalGoodsService) {
-                    try {
-                        const service = await window.getDigitalGoodsService("https://play.google.com/billing");
-                        const details = await service.getDetails([productId]);
-                        
-                        if (details && details.length > 0) {
-                            const paymentMethodData = [{
-                                supportedMethods: "https://play.google.com/billing",
-                                data: { sku: productId }
-                            }];
-                            
-                            const request = new PaymentRequest(paymentMethodData, {
-                                total: { label: `CupónIA Premium ${plan}`, amount: { currency: "EUR", value: price } }
-                            });
-                            
-                            const paymentResponse = await request.show();
-                            
-                            await authFetch('/usuario/suscribir', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ plan: plan, purchaseToken: paymentResponse.details.purchaseToken })
-                            });
-                            
-                            await paymentResponse.complete("success");
-                            alert(`🎉 ¡Suscripción oficial completada con Google Play!`);
-                            playBillingCompleted = true;
-                        }
-                    } catch (err) {
-                        console.log("Fallo conectando a Play Billing en este contexto:", err);
-                    }
+                // 1. SI ESTAMOS DENTRO DE LA APP NATIVA FLUTTER (Dispara RevenueCat)
+                if (window.FlutterPaymentChannel) {
+                    window.FlutterPaymentChannel.postMessage(plan);
+                    return;
                 }
 
-                if (!playBillingCompleted) {
-                    try {
-                        const res = await authFetch('/usuario/suscribir', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ plan: plan })
-                        });
-                        const d = await res.json();
-                        if (d.ok) {
-                            alert(`🎉 ¡CupónIA Premium (${plan.toUpperCase()}) activado con éxito!`);
-                        }
-                    } catch(e) {
-                        alert("Error procesando suscripción");
+                // 2. MODO DESARROLLO WEB (Si estás probando desde el navegador)
+                try {
+                    const res = await authFetch('/usuario/suscribir', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ plan: plan })
+                    });
+                    const d = await res.json();
+                    if (d.ok) {
+                        alert(`ℹ️ [Modo Web]: Activado CupónIA Premium (${plan.toUpperCase()}) en simulación.`);
+                        window.cerrarPaywall();
+                        await window.cargarSuscripcionUsuario();
+                        await window.loadCoupons();
                     }
+                } catch(e) {
+                    alert("Error procesando suscripción");
                 }
+            };
 
+            // Función que llama Flutter desde Dart cuando RevenueCat confirma el pago en Google Play
+            window.onFlutterPaymentSuccess = async (plan) => {
+                await authFetch('/usuario/suscribir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan: plan })
+                });
+                alert("🎉 ¡Pago verificado con Google Play y RevenueCat! Bienvenido a CupónIA Premium.");
                 window.cerrarPaywall();
                 await window.cargarSuscripcionUsuario();
                 await window.loadCoupons();
@@ -830,7 +813,7 @@ async def home():
     return HTMLResponse(content=html_content)
 
 # ==============================================================================
-# ENDPOINTS REST
+# ENDPOINTS REST (PYTHON)
 # ==============================================================================
 @app.get("/usuario/suscripcion")
 async def get_sub_status(user_id: str = Depends(get_current_user)):
