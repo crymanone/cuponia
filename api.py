@@ -42,9 +42,6 @@ async def get_current_user(authorization: str = Header(...)):
     except Exception:
         raise HTTPException(status_code=401, detail="Sesión expirada")
 
-# ==============================================================================
-# ASSETS PWA Y GOOGLE PLAY
-# ==============================================================================
 @app.get("/manifest.json")
 async def get_manifest():
     return JSONResponse({
@@ -88,7 +85,7 @@ async def asset_links():
     }])
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (CON PUENTE NATIVO FLUTTER + REVENUECAT)
+# FRONTEND INTERACTIVO (PWA CON PROTECCIÓN ANTI-CRASH HONOR)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -110,7 +107,9 @@ async def home():
             body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); margin: 0; color: #263238; display: flex; justify-content: center; min-height: 100vh; padding-bottom: 50px; }
             .app-container { width: 100%; max-width: 600px; padding: 15px; display: none; position: relative; }
             
+            /* 🚨 CAMBIO VITAL: El Login siempre visible por defecto para que no se quede la pantalla en blanco */
             #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%; text-align: center; }
+            
             .login-btn { background: white; color: #444; border: 1px solid #ddd; padding: 15px 30px; border-radius: 50px; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
             
             #user-info { position: absolute; top: 15px; right: 15px; z-index: 100; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.95); padding: 5px 12px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); backdrop-filter: blur(5px); }
@@ -133,13 +132,11 @@ async def home():
             .btn { width: 100%; padding: 15px; border: none; border-radius: 14px; font-size: 15px; font-weight: 700; color: white; cursor: pointer; transition: 0.2s; box-sizing: border-box; text-align: center; }
             .btn-green { background: linear-gradient(135deg, #00796b, #004d40); box-shadow: 0 4px 12px rgba(0,77,64,0.3); }
             .btn-orange { background: linear-gradient(135deg, #ff6f00, #ffa000); box-shadow: 0 4px 12px rgba(255,111,0,0.3); }
-            .btn-gold { background: linear-gradient(135deg, #ffd700, #ff9800); color: #3e2723; font-weight: 900; box-shadow: 0 4px 12px rgba(255,152,0,0.4); }
             
             .filters-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; scrollbar-width: none; }
             .chip { background: #e0f2f1; color: #004d40; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; border: 1px solid #b2dfdb; }
             .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-            /* Tarjetas de Cupones */
             .coupon-item { background: white; border-radius: 16px; border: 1px solid #e0e0e0; margin-bottom: 15px; padding: 16px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
             .coupon-badge-market { background: #e0f2f1; color: #00796b; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block; }
             .coupon-title { font-size: 17px; font-weight: bold; color: #263238; margin: 4px 0; }
@@ -149,7 +146,6 @@ async def home():
             .tag-ok { background: #e8f5e9; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             .tag-expired { background: #eeeeee; color: #9e9e9e; text-decoration: line-through; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             
-            /* Lista de la compra */
             .shopping-input-box { display: flex; gap: 8px; margin-bottom: 15px; align-items: center; }
             .shopping-input { flex: 1; padding: 14px 16px; border: 2px solid #b2dfdb; border-radius: 12px; font-size: 15px; outline: none; font-weight: 600; box-sizing: border-box; }
             .btn-mic { width: 50px; height: 50px; border-radius: 12px; background: var(--primary-light); color: white; border: none; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
@@ -194,11 +190,11 @@ async def home():
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
                 <span>Acceder con Google</span>
             </button>
+            <p id="errorMsg" style="color:#d32f2f; font-size:12px; margin-top:15px;"></p>
         </div>
 
         <div id="appScreen" class="app-container">
             <div id="user-info"></div>
-
             <header>
                 <h1>CupónIA</h1>
                 <div class="tagline">Ahorro Inteligente de Supermercado</div>
@@ -345,22 +341,29 @@ async def home():
 
             document.getElementById('year').innerText = new Date().getFullYear();
 
-            onAuthStateChanged(auth, async (u) => {
-                if (u) {
-                    window.userToken = await u.getIdToken();
-                    document.getElementById('loginScreen').style.display = 'none';
-                    document.getElementById('appScreen').style.display = 'block';
-                    
-                    await window.cargarSuscripcionUsuario();
-                    await window.loadCoupons();
-                    await window.loadShoppingList();
-                } else {
-                    document.getElementById('loginScreen').style.display = 'flex';
-                    document.getElementById('appScreen').style.display = 'none';
-                }
-            });
+            // Retrasamos el inicio de Firebase 1 segundo para evadir el bloqueo nativo
+            setTimeout(() => {
+                onAuthStateChanged(auth, async (u) => {
+                    if (u) {
+                        window.userToken = await u.getIdToken();
+                        document.getElementById('loginScreen').style.display = 'none';
+                        document.getElementById('appScreen').style.display = 'block';
+                        
+                        await window.cargarSuscripcionUsuario();
+                        await window.loadCoupons();
+                        await window.loadShoppingList();
+                    } else {
+                        document.getElementById('loginScreen').style.display = 'flex';
+                        document.getElementById('appScreen').style.display = 'none';
+                    }
+                });
+            }, 800);
 
-            window.loginWithGoogle = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
+            window.loginWithGoogle = () => {
+                signInWithPopup(auth, provider).catch(e => {
+                    document.getElementById('errorMsg').innerText = "Aviso: " + e.message;
+                });
+            };
             window.logout = () => signOut(auth).then(() => location.reload());
 
             async function authFetch(url, opts = {}) {
@@ -404,17 +407,13 @@ async def home():
                 }
             };
 
-            // =========================================================================
-            // 🌉 EL PUENTE NATIVO FLUTTER + REVENUECAT
-            // =========================================================================
+            // PASARELA RESILIENTE (FLUTTER + WEB)
             window.suscribirse = async (plan) => {
-                // 1. SI ESTAMOS DENTRO DE LA APP NATIVA FLUTTER (Dispara RevenueCat)
                 if (window.FlutterPaymentChannel) {
                     window.FlutterPaymentChannel.postMessage(plan);
                     return;
                 }
-
-                // 2. MODO DESARROLLO WEB (Si estás probando desde el navegador)
+                
                 try {
                     const res = await authFetch('/usuario/suscribir', {
                         method: 'POST',
@@ -433,7 +432,6 @@ async def home():
                 }
             };
 
-            // Función que llama Flutter desde Dart cuando RevenueCat confirma el pago en Google Play
             window.onFlutterPaymentSuccess = async (plan) => {
                 await authFetch('/usuario/suscribir', {
                     method: 'POST',
@@ -813,7 +811,7 @@ async def home():
     return HTMLResponse(content=html_content)
 
 # ==============================================================================
-# ENDPOINTS REST (PYTHON)
+# ENDPOINTS REST
 # ==============================================================================
 @app.get("/usuario/suscripcion")
 async def get_sub_status(user_id: str = Depends(get_current_user)):
