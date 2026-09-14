@@ -417,45 +417,17 @@ async def home():
                 }
             };
 
-            // PASARELA DE PAGO DIRECTA GOOGLE PLAY BILLING
+            // =========================================================================
+            // 🌉 EL PUENTE NATIVO FLUTTER_INAPPWEBVIEW + REVENUECAT
+            // =========================================================================
             window.suscribirse = async (plan) => {
-                const productId = plan === 'anual' ? 'cuponia_premium_anual' : 'cuponia_premium_mensual';
-                const price = plan === 'anual' ? '14.99' : '1.99';
-
-                if (window.getDigitalGoodsService) {
-                    try {
-                        const service = await window.getDigitalGoodsService("https://play.google.com/billing");
-                        
-                        const paymentMethodData = [{
-                            supportedMethods: "https://play.google.com/billing",
-                            data: { sku: productId }
-                        }];
-                        
-                        const request = new PaymentRequest(paymentMethodData, {
-                            total: { label: `CupónIA Premium ${plan}`, amount: { currency: "EUR", value: price } }
-                        });
-                        
-                        const paymentResponse = await request.show();
-                        
-                        await authFetch('/usuario/suscribir', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ plan: plan, purchaseToken: paymentResponse.details.purchaseToken })
-                        });
-                        
-                        await paymentResponse.complete("success");
-                        alert(`🎉 ¡Suscripción oficial completada con Google Play!`);
-                        window.cerrarPaywall();
-                        await window.cargarSuscripcionUsuario();
-                        await window.loadCoupons();
-                        return;
-                    } catch (err) {
-                        console.log("Fallo conectando a Play Billing:", err);
-                        // Fallback silenciado al modo web
-                    }
+                // 1. SI ESTAMOS DENTRO DE LA APP NATIVA FLUTTER (Llamada al Handler)
+                if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+                    window.flutter_inappwebview.callHandler('FlutterPaymentChannel', plan);
+                    return;
                 }
 
-                // Fallback Modo Desarrollador (Si falla Play Store o estamos en Chrome normal)
+                // 2. MODO DESARROLLO WEB (Si estás probando desde el navegador de PC)
                 try {
                     const res = await authFetch('/usuario/suscribir', {
                         method: 'POST',
@@ -464,7 +436,7 @@ async def home():
                     });
                     const d = await res.json();
                     if (d.ok) {
-                        alert(`ℹ️ [Suscripción Activada en Modo Pruebas].`);
+                        alert(`ℹ️ [Modo Web]: Activado CupónIA Premium (${plan.toUpperCase()}) en modo pruebas.`);
                         window.cerrarPaywall();
                         await window.cargarSuscripcionUsuario();
                         await window.loadCoupons();
@@ -472,6 +444,19 @@ async def home():
                 } catch(e) {
                     alert("Error procesando suscripción");
                 }
+            };
+
+            // Función que llama Flutter desde Dart cuando RevenueCat confirma el pago
+            window.onFlutterPaymentSuccess = async (plan) => {
+                await authFetch('/usuario/suscribir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan: plan })
+                });
+                alert("🎉 ¡Pago verificado con Google Play y RevenueCat! Bienvenido a CupónIA Premium.");
+                window.cerrarPaywall();
+                await window.cargarSuscripcionUsuario();
+                await window.loadCoupons();
             };
 
             // LISTA DE LA COMPRA INTELIGENTE
