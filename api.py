@@ -88,7 +88,7 @@ async def asset_links():
     }])
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (CÁMARA CON BOTONES 100% TÁCTILES)
+# FRONTEND INTERACTIVO (PWA + FUNCIONES SMART: VOZ, ALERTAS Y WAKELOCK)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -124,6 +124,11 @@ async def home():
             h1 { margin: 0; color: var(--primary); font-size: 34px; letter-spacing: -1px; font-weight: 900; }
             .tagline { color: #546e7a; font-size: 13px; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
             
+            /* ALERTA ANTI-FUGA DE DINERO */
+            #alertaCaducidad { display: none; background: linear-gradient(135deg, #ffe082, #ffca28); border-radius: 16px; padding: 15px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(255, 111, 0, 0.2); border: 2px solid #ffb300; }
+            .alerta-titulo { color: #d84315; font-weight: 900; font-size: 14px; margin-bottom: 5px; }
+            .alerta-texto { color: #4e342e; font-size: 12px; line-height: 1.4; }
+
             .savings-card { background: linear-gradient(135deg, #004d40, #00796b); color: white; padding: 20px; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,77,64,0.3); margin-bottom: 20px; }
             .savings-amount { font-size: 36px; font-weight: 900; margin: 5px 0; color: #a7ffeb; }
             
@@ -134,11 +139,15 @@ async def home():
             .btn-green { background: linear-gradient(135deg, #00796b, #004d40); box-shadow: 0 4px 12px rgba(0,77,64,0.3); }
             .btn-orange { background: linear-gradient(135deg, #ff6f00, #ffa000); box-shadow: 0 4px 12px rgba(255,111,0,0.3); }
             
+            /* BOTONES SMART (Voz y Pantalla) */
+            .smart-bar { display: flex; justify-content: space-between; align-items: center; background: #e0f2f1; padding: 10px; border-radius: 12px; margin-top: 15px; }
+            .btn-smart-action { background: white; color: #00796b; border: 1px solid #b2dfdb; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+            .btn-smart-action.active { background: #004d40; color: white; border-color: #004d40; }
+
             .filters-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; scrollbar-width: none; }
             .chip { background: #e0f2f1; color: #004d40; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; border: 1px solid #b2dfdb; }
             .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-            /* Tarjetas de Cupones */
             .coupon-item { background: white; border-radius: 16px; border: 1px solid #e0e0e0; margin-bottom: 15px; padding: 16px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
             .coupon-badge-market { background: #e0f2f1; color: #00796b; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block; }
             .coupon-title { font-size: 17px; font-weight: bold; color: #263238; margin: 4px 0; }
@@ -148,7 +157,6 @@ async def home():
             .tag-ok { background: #e8f5e9; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             .tag-expired { background: #eeeeee; color: #9e9e9e; text-decoration: line-through; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             
-            /* Lista de la compra */
             .shopping-input-box { display: flex; gap: 8px; margin-bottom: 15px; align-items: center; }
             .shopping-input { flex: 1; padding: 14px 16px; border: 2px solid #b2dfdb; border-radius: 12px; font-size: 15px; outline: none; font-weight: 600; box-sizing: border-box; }
             .btn-mic { width: 50px; height: 50px; border-radius: 12px; background: var(--primary-light); color: white; border: none; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
@@ -170,124 +178,17 @@ async def home():
             #barcodeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
             .barcode-box { background: white; padding: 25px 20px; border-radius: 20px; width: 90%; max-width: 360px; text-align: center; }
             
-            /* =========================================================================
-               ESTILOS CÁMARA BLINDADA (Z-INDEX Y CAPAS TÁCTILES CORREGIDAS)
-               ========================================================================= */
-            #cameraModal { 
-                display: none; 
-                position: fixed; 
-                top: 0; 
-                left: 0; 
-                width: 100%; 
-                height: 100vh; 
-                height: 100dvh; 
-                background: #000; 
-                z-index: 2000; 
-                flex-direction: column; 
-                box-sizing: border-box; 
-                overflow: hidden; 
-            }
-            .camera-header { 
-                position: relative;
-                z-index: 500; /* Siempre por encima de la cámara */
-                width: 100%; 
-                padding: 15px 20px; 
-                display: flex; 
-                justify-content: space-between; 
-                align-items: center; 
-                box-sizing: border-box; 
-                color: white; 
-                background: rgba(0,0,0,0.7); 
-                flex-shrink: 0; 
-            }
-            .camera-viewport { 
-                position: relative; 
-                width: 100%; 
-                flex: 1; 
-                min-height: 0; 
-                display: flex; 
-                justify-content: center; 
-                align-items: center; 
-                overflow: hidden; 
-                z-index: 10;
-            }
-            #cameraVideo { 
-                width: 100%; 
-                height: 100%; 
-                object-fit: cover; 
-            }
-            .camera-guide { 
-                position: absolute; 
-                width: 80%; 
-                max-width: 320px; 
-                height: 60%; 
-                max-height: 380px; 
-                border: 2px dashed #00e676; 
-                border-radius: 20px; 
-                /* 🚨 QUITADA LA SOMBRA GIGANTE BLOQUEANTE, AHORA NO INTERCEPTA TOQUES */
-                pointer-events: none !important; 
-                display: flex; 
-                justify-content: center; 
-                align-items: flex-end; 
-                padding-bottom: 15px; 
-                z-index: 20;
-            }
-            .camera-guide-text { 
-                color: white; 
-                font-size: 11px; 
-                font-weight: bold; 
-                background: rgba(0,0,0,0.7); 
-                padding: 4px 12px; 
-                border-radius: 20px; 
-                pointer-events: none !important;
-            }
-            .camera-footer { 
-                position: relative;
-                z-index: 500; /* Siempre por encima de la cámara */
-                width: 100%; 
-                padding: 20px 0 calc(20px + env(safe-area-inset-bottom, 15px)) 0; 
-                background: rgba(0,0,0,0.85); 
-                display: flex; 
-                justify-content: center; 
-                align-items: center; 
-                gap: 40px; 
-                flex-shrink: 0; 
-                box-sizing: border-box; 
-            }
-            .btn-shutter { 
-                position: relative;
-                z-index: 501;
-                width: 72px; 
-                height: 72px; 
-                border-radius: 50%; 
-                background: white; 
-                border: 4px solid var(--primary); 
-                box-shadow: 0 0 20px rgba(255,255,255,0.4); 
-                cursor: pointer; 
-                display: flex; 
-                justify-content: center; 
-                align-items: center; 
-                transition: 0.1s; 
-                touch-action: manipulation;
-            }
+            #cameraModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100dvh; background: #000; z-index: 2000; flex-direction: column; box-sizing: border-box; overflow: hidden; }
+            .camera-header { position: relative; z-index: 500; width: 100%; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; color: white; background: rgba(0,0,0,0.7); flex-shrink: 0; }
+            .camera-viewport { position: relative; width: 100%; flex: 1; min-height: 0; display: flex; justify-content: center; align-items: center; overflow: hidden; z-index: 10; }
+            #cameraVideo { width: 100%; height: 100%; object-fit: cover; }
+            .camera-guide { position: absolute; width: 80%; max-width: 320px; height: 60%; max-height: 380px; border: 2px dashed #00e676; border-radius: 20px; pointer-events: none !important; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 15px; z-index: 20; }
+            .camera-guide-text { color: white; font-size: 11px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 20px; pointer-events: none !important; }
+            .camera-footer { position: relative; z-index: 500; width: 100%; padding: 20px 0 calc(20px + env(safe-area-inset-bottom, 15px)) 0; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; gap: 40px; flex-shrink: 0; box-sizing: border-box; }
+            .btn-shutter { position: relative; z-index: 501; width: 72px; height: 72px; border-radius: 50%; background: white; border: 4px solid var(--primary); box-shadow: 0 0 20px rgba(255,255,255,0.4); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.1s; touch-action: manipulation; }
             .btn-shutter:active { transform: scale(0.92); }
             .btn-shutter-inner { width: 54px; height: 54px; border-radius: 50%; background: var(--primary); pointer-events: none !important; }
-            .btn-camera-action { 
-                position: relative;
-                z-index: 501;
-                background: rgba(255,255,255,0.25); 
-                border: none; 
-                color: white; 
-                border-radius: 50%; 
-                width: 44px; 
-                height: 44px; 
-                font-size: 20px; 
-                cursor: pointer; 
-                display: flex; 
-                justify-content: center; 
-                align-items: center; 
-                touch-action: manipulation;
-            }
+            .btn-camera-action { position: relative; z-index: 501; background: rgba(255,255,255,0.25); border: none; color: white; border-radius: 50%; width: 44px; height: 44px; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; touch-action: manipulation; }
         </style>
     </head>
     <body>
@@ -311,6 +212,12 @@ async def home():
                 <div class="tagline">Ahorro Inteligente de Supermercado</div>
             </header>
 
+            <!-- ALERTA DE CADUCIDAD INTELIGENTE -->
+            <div id="alertaCaducidad">
+                <div class="alerta-titulo">⚠️ ¡NO PIERDAS ESTE DINERO!</div>
+                <div class="alerta-texto" id="alertaTexto">Tienes un cupón que caduca hoy. Pásate por el súper y ahórrate el dinero antes de que desaparezca.</div>
+            </div>
+
             <div class="savings-card">
                 <div style="font-size:13px; font-weight:bold; text-transform:uppercase;">💰 Tu Ahorro Disponible</div>
                 <div id="totalSavings" class="savings-amount">0.00 €</div>
@@ -328,6 +235,12 @@ async def home():
                 </div>
 
                 <div id="shoppingListContainer" style="margin-top:10px;">Cargando lista...</div>
+                
+                <!-- FUNCIONES SMART DE LA LISTA -->
+                <div class="smart-bar">
+                    <button id="btnLeerLista" class="btn-smart-action" onclick="leerListaPorVoz()">🔊 Leer Lista</button>
+                    <button id="btnWakeLock" class="btn-smart-action" onclick="toggleModoSupermercado()">🛒 Modo Súper (Apagado)</button>
+                </div>
                 
                 <div style="text-align:right; margin-top:15px;">
                     <span onclick="limpiarComprados()" style="font-size:12px; color:#c62828; cursor:pointer; font-weight:bold; text-decoration:underline;">🧹 Limpiar productos comprados</span>
@@ -413,7 +326,7 @@ async def home():
             </div>
         </div>
 
-        <!-- MODAL CÁMARA IN-APP (BLINDADA CONTRA BLOQUEOS TÁCTILES) -->
+        <!-- MODAL CÁMARA IN-APP -->
         <div id="cameraModal">
             <div class="camera-header">
                 <button id="btnTorch" class="btn-camera-action" onclick="toggleTorch(event)" title="Encender Linterna" type="button">🔦</button>
@@ -452,7 +365,7 @@ async def home():
 
             document.getElementById('year').innerText = new Date().getFullYear();
 
-            // Bloque anti-pantalla en blanco
+            // Bloque anti-pantalla en blanco Honor
             let firebaseRespondio = false;
             setTimeout(() => {
                 if (!firebaseRespondio && !window.userToken) {
@@ -517,21 +430,19 @@ async def home():
             window.cancelarSuscripcionTest = async () => {
                 if (confirm("¿Quieres volver a la versión Free para probar los límites?")) {
                     await authFetch('/usuario/cancelar', { method: 'POST' });
-                    alert("✅ Cuenta restablecida a modo Free (Límite de 5 cupones activo).");
+                    alert("✅ Cuenta restablecida a modo Free.");
                     window.cerrarPaywall();
                     await window.cargarSuscripcionUsuario();
                     await window.loadCoupons();
                 }
             };
 
-            // PASARELA DE PAGO CON PUENTE NATIVO FLUTTER_INAPPWEBVIEW
             window.suscribirse = async (plan) => {
                 if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
                     window.flutter_inappwebview.callHandler('FlutterPaymentChannel', plan);
                     return;
                 }
-
-                // Fallback web
+                
                 try {
                     const res = await authFetch('/usuario/suscribir', {
                         method: 'POST',
@@ -540,7 +451,7 @@ async def home():
                     });
                     const d = await res.json();
                     if (d.ok) {
-                        alert(`ℹ️ [Suscripción Activada en Modo Pruebas].`);
+                        alert(`ℹ️ [Modo Web]: Activado CupónIA Premium (${plan.toUpperCase()}).`);
                         window.cerrarPaywall();
                         await window.cargarSuscripcionUsuario();
                         await window.loadCoupons();
@@ -550,7 +461,129 @@ async def home():
                 }
             };
 
-            // LISTA DE LA COMPRA INTELIGENTE
+            window.onFlutterPaymentSuccess = async (plan) => {
+                await authFetch('/usuario/suscribir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan: plan })
+                });
+                alert("🎉 ¡Pago verificado! Bienvenido a CupónIA Premium.");
+                window.cerrarPaywall();
+                await window.cargarSuscripcionUsuario();
+                await window.loadCoupons();
+            };
+
+            // =========================================================================
+            // SMART FEATURES: VOZ, WAKELOCK Y ALERTA DE CADUCIDAD
+            // =========================================================================
+
+            // 🚨 Alerta Inteligente de Caducidad
+            function comprobarAlertasCaducidad() {
+                const today = new Date(); 
+                today.setHours(0,0,0,0);
+                let tieneUrgencia = false;
+                let mensajeUrgente = "";
+
+                for (const c of window.allCoupons) {
+                    if (c.is_used || !c.fecha_caducidad || !c.fecha_caducidad.includes('/')) continue;
+                    
+                    const [d, m, y] = c.fecha_caducidad.split('/');
+                    const expDate = new Date(y, m-1, d);
+                    const diff = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+
+                    if (diff >= 0 && diff <= 1) { // Caduca hoy o mañana
+                        tieneUrgencia = true;
+                        mensajeUrgente = `Ojo, tienes un cupón de <b>${c.supermercado}</b> que caduca en menos de 48h. ¡No dejes que se esfume!`;
+                        break;
+                    }
+                }
+
+                if (tieneUrgencia) {
+                    document.getElementById('alertaTexto').innerHTML = mensajeUrgente;
+                    document.getElementById('alertaCaducidad').style.display = 'block';
+                } else {
+                    document.getElementById('alertaCaducidad').style.display = 'none';
+                }
+            }
+
+            // 🔊 Asistente de Voz para leer la lista
+            window.leerListaPorVoz = () => {
+                if (!window.speechSynthesis) return alert("Tu navegador no soporta lectura por voz.");
+                
+                const btn = document.getElementById('btnLeerLista');
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel();
+                    btn.innerText = "🔊 Leer Lista";
+                    return;
+                }
+
+                const pendientes = window.shoppingList.filter(i => !i.is_checked);
+                if (pendientes.length === 0) {
+                    const speech = new SpeechSynthesisUtterance("Tu lista de la compra está vacía o ya has comprado todo.");
+                    speech.lang = 'es-ES';
+                    window.speechSynthesis.speak(speech);
+                    return;
+                }
+
+                let textoALeer = `Tienes ${pendientes.length} productos en la lista. Son los siguientes: `;
+                let tieneDescuentos = false;
+
+                pendientes.forEach((item, index) => {
+                    textoALeer += item.producto;
+                    const cuponMatch = encontrarCuponMatch(item.producto);
+                    if (cuponMatch) {
+                        textoALeer += `. Atención, tienes un descuento en ${cuponMatch.supermercado} para este producto`;
+                        tieneDescuentos = true;
+                    }
+                    if (index < pendientes.length - 1) textoALeer += ", ";
+                });
+
+                if (tieneDescuentos) {
+                    textoALeer += ". ¡No olvides enseñar el móvil en la caja!";
+                }
+
+                const speech = new SpeechSynthesisUtterance(textoALeer);
+                speech.lang = 'es-ES';
+                speech.rate = 1.0;
+                
+                speech.onstart = () => { btn.innerText = "🔇 Detener lectura"; btn.style.color = "#d32f2f"; };
+                speech.onend = () => { btn.innerText = "🔊 Leer Lista"; btn.style.color = "#00796b"; };
+                
+                window.speechSynthesis.speak(speech);
+            };
+
+            // 🛒 Modo Supermercado (WakeLock)
+            let wakeLock = null;
+            window.toggleModoSupermercado = async () => {
+                const btn = document.getElementById('btnWakeLock');
+                
+                if (wakeLock !== null) {
+                    await wakeLock.release();
+                    wakeLock = null;
+                    btn.innerText = "🛒 Modo Súper (Apagado)";
+                    btn.classList.remove('active');
+                    return;
+                }
+
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    btn.innerText = "🛒 Modo Súper (ON)";
+                    btn.classList.add('active');
+                    
+                    // Si el usuario bloquea el móvil a mano, se suelta el candado
+                    wakeLock.addEventListener('release', () => {
+                        wakeLock = null;
+                        btn.innerText = "🛒 Modo Súper (Apagado)";
+                        btn.classList.remove('active');
+                    });
+                } catch (err) {
+                    alert("Tu móvil no permite bloquear la pantalla encendida desde la web.");
+                }
+            };
+
+            // =========================================================================
+            // LÓGICA GENERAL (Cupones y Cartera)
+            // =========================================================================
             window.loadShoppingList = async () => {
                 try {
                     const res = await authFetch('/lista');
@@ -635,7 +668,6 @@ async def home():
                 await window.loadShoppingList();
             };
 
-            // DICTADO POR VOZ
             let recognition = null;
             let isListening = false;
 
@@ -677,7 +709,6 @@ async def home():
                 recognition.start();
             };
 
-            // LÓGICA DE CUPONES
             window.loadCoupons = async () => {
                 try {
                     const res = await authFetch('/cupones');
@@ -685,6 +716,9 @@ async def home():
                     window.renderCoupons();
                     if (window.shoppingList.length > 0) window.renderShoppingList();
                     await window.cargarSuscripcionUsuario();
+                    
+                    // Validamos si hay que sacar el cartel amarillo de peligro
+                    comprobarAlertasCaducidad();
                 } catch(e) {}
             };
 
@@ -788,9 +822,7 @@ async def home():
                 }
             };
 
-            // =========================================================================
-            // CÁMARA IN-APP WEBRTC (CON FUNCIONES BLINDADAS)
-            // =========================================================================
+            // CÁMARA IN-APP WEBRTC
             let cameraStream = null;
             let torchActive = false;
 
