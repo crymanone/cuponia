@@ -43,7 +43,7 @@ async def get_current_user(authorization: str = Header(...)):
         raise HTTPException(status_code=401, detail="Sesión expirada")
 
 # ==============================================================================
-# ASSETS PWA Y GOOGLE PLAY (ASSETLINKS DIGITALES CON FIRMA OFICIAL)
+# ASSETS PWA Y GOOGLE PLAY
 # ==============================================================================
 @app.get("/manifest.json")
 async def get_manifest():
@@ -73,7 +73,6 @@ async def privacy():
     </body></html>
     """
 
-# APRETÓN DE MANOS OFICIAL GOOGLE PLAY (CON LA CLAVE MAESTRA DE GOOGLE + SUBIDA)
 @app.get("/.well-known/assetlinks.json")
 async def asset_links():
     return JSONResponse(content=[{
@@ -89,7 +88,7 @@ async def asset_links():
     }])
 
 # ==============================================================================
-# FRONTEND INTERACTIVO (CON PAGO DIRECTO DIGITAL GOODS API)
+# FRONTEND INTERACTIVO (CÁMARA CON BOTONES 100% TÁCTILES)
 # ==============================================================================
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -139,6 +138,7 @@ async def home():
             .chip { background: #e0f2f1; color: #004d40; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; border: 1px solid #b2dfdb; }
             .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
+            /* Tarjetas de Cupones */
             .coupon-item { background: white; border-radius: 16px; border: 1px solid #e0e0e0; margin-bottom: 15px; padding: 16px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
             .coupon-badge-market { background: #e0f2f1; color: #00796b; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block; }
             .coupon-title { font-size: 17px; font-weight: bold; color: #263238; margin: 4px 0; }
@@ -148,6 +148,7 @@ async def home():
             .tag-ok { background: #e8f5e9; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             .tag-expired { background: #eeeeee; color: #9e9e9e; text-decoration: line-through; font-size: 11px; padding: 4px 8px; border-radius: 6px; }
             
+            /* Lista de la compra */
             .shopping-input-box { display: flex; gap: 8px; margin-bottom: 15px; align-items: center; }
             .shopping-input { flex: 1; padding: 14px 16px; border: 2px solid #b2dfdb; border-radius: 12px; font-size: 15px; outline: none; font-weight: 600; box-sizing: border-box; }
             .btn-mic { width: 50px; height: 50px; border-radius: 12px; background: var(--primary-light); color: white; border: none; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
@@ -169,18 +170,124 @@ async def home():
             #barcodeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; }
             .barcode-box { background: white; padding: 25px 20px; border-radius: 20px; width: 90%; max-width: 360px; text-align: center; }
             
-            /* CÁMARA (Nativa del navegador) */
-            #cameraModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100dvh; background: #000; z-index: 2000; flex-direction: column; box-sizing: border-box; overflow: hidden; }
-            .camera-header { width: 100%; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; color: white; z-index: 10; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); flex-shrink: 0; }
-            .camera-viewport { position: relative; width: 100%; flex: 1; min-height: 0; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-            #cameraVideo { width: 100%; height: 100%; object-fit: cover; }
-            .camera-guide { position: absolute; width: 80%; max-width: 320px; height: 60%; max-height: 380px; border: 2px dashed #00e676; border-radius: 20px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); pointer-events: none; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 15px; }
-            .camera-guide-text { color: white; font-size: 11px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 20px; }
-            .camera-footer { width: 100%; padding: 15px 0 calc(15px + env(safe-area-inset-bottom, 10px)) 0; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; gap: 40px; flex-shrink: 0; box-sizing: border-box; }
-            .btn-shutter { width: 70px; height: 70px; border-radius: 50%; background: white; border: 4px solid var(--primary); box-shadow: 0 0 20px rgba(255,255,255,0.4); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.1s; }
+            /* =========================================================================
+               ESTILOS CÁMARA BLINDADA (Z-INDEX Y CAPAS TÁCTILES CORREGIDAS)
+               ========================================================================= */
+            #cameraModal { 
+                display: none; 
+                position: fixed; 
+                top: 0; 
+                left: 0; 
+                width: 100%; 
+                height: 100vh; 
+                height: 100dvh; 
+                background: #000; 
+                z-index: 2000; 
+                flex-direction: column; 
+                box-sizing: border-box; 
+                overflow: hidden; 
+            }
+            .camera-header { 
+                position: relative;
+                z-index: 500; /* Siempre por encima de la cámara */
+                width: 100%; 
+                padding: 15px 20px; 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
+                box-sizing: border-box; 
+                color: white; 
+                background: rgba(0,0,0,0.7); 
+                flex-shrink: 0; 
+            }
+            .camera-viewport { 
+                position: relative; 
+                width: 100%; 
+                flex: 1; 
+                min-height: 0; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                overflow: hidden; 
+                z-index: 10;
+            }
+            #cameraVideo { 
+                width: 100%; 
+                height: 100%; 
+                object-fit: cover; 
+            }
+            .camera-guide { 
+                position: absolute; 
+                width: 80%; 
+                max-width: 320px; 
+                height: 60%; 
+                max-height: 380px; 
+                border: 2px dashed #00e676; 
+                border-radius: 20px; 
+                /* 🚨 QUITADA LA SOMBRA GIGANTE BLOQUEANTE, AHORA NO INTERCEPTA TOQUES */
+                pointer-events: none !important; 
+                display: flex; 
+                justify-content: center; 
+                align-items: flex-end; 
+                padding-bottom: 15px; 
+                z-index: 20;
+            }
+            .camera-guide-text { 
+                color: white; 
+                font-size: 11px; 
+                font-weight: bold; 
+                background: rgba(0,0,0,0.7); 
+                padding: 4px 12px; 
+                border-radius: 20px; 
+                pointer-events: none !important;
+            }
+            .camera-footer { 
+                position: relative;
+                z-index: 500; /* Siempre por encima de la cámara */
+                width: 100%; 
+                padding: 20px 0 calc(20px + env(safe-area-inset-bottom, 15px)) 0; 
+                background: rgba(0,0,0,0.85); 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                gap: 40px; 
+                flex-shrink: 0; 
+                box-sizing: border-box; 
+            }
+            .btn-shutter { 
+                position: relative;
+                z-index: 501;
+                width: 72px; 
+                height: 72px; 
+                border-radius: 50%; 
+                background: white; 
+                border: 4px solid var(--primary); 
+                box-shadow: 0 0 20px rgba(255,255,255,0.4); 
+                cursor: pointer; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                transition: 0.1s; 
+                touch-action: manipulation;
+            }
             .btn-shutter:active { transform: scale(0.92); }
-            .btn-shutter-inner { width: 52px; height: 52px; border-radius: 50%; background: var(--primary); }
-            .btn-camera-action { background: rgba(255,255,255,0.25); border: none; color: white; border-radius: 50%; width: 42px; height: 42px; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+            .btn-shutter-inner { width: 54px; height: 54px; border-radius: 50%; background: var(--primary); pointer-events: none !important; }
+            .btn-camera-action { 
+                position: relative;
+                z-index: 501;
+                background: rgba(255,255,255,0.25); 
+                border: none; 
+                color: white; 
+                border-radius: 50%; 
+                width: 44px; 
+                height: 44px; 
+                font-size: 20px; 
+                cursor: pointer; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                touch-action: manipulation;
+            }
         </style>
     </head>
     <body>
@@ -306,21 +413,21 @@ async def home():
             </div>
         </div>
 
-        <!-- MODAL CÁMARA IN-APP -->
+        <!-- MODAL CÁMARA IN-APP (BLINDADA CONTRA BLOQUEOS TÁCTILES) -->
         <div id="cameraModal">
             <div class="camera-header">
-                <button id="btnTorch" class="btn-camera-action" onclick="toggleTorch()" title="Encender Linterna">🔦</button>
-                <span style="font-weight:bold; font-size:14px;">📸 Encuadra el Cupón</span>
-                <button class="btn-camera-action" onclick="cerrarCamara()">✕</button>
+                <button id="btnTorch" class="btn-camera-action" onclick="toggleTorch(event)" title="Encender Linterna" type="button">🔦</button>
+                <span style="font-weight:bold; font-size:15px; color:white;">📸 Encuadra el Cupón</span>
+                <button class="btn-camera-action" onclick="cerrarCamara(event)" type="button">✕</button>
             </div>
             <div class="camera-viewport">
-                <video id="cameraVideo" autoplay playsinline></video>
+                <video id="cameraVideo" autoplay playsinline muted></video>
                 <div class="camera-guide">
                     <span class="camera-guide-text">Alinea el cupón aquí</span>
                 </div>
             </div>
             <div class="camera-footer">
-                <button id="btnCapturar" class="btn-shutter" onclick="capturarFoto()">
+                <button id="btnCapturar" class="btn-shutter" onclick="capturarFoto(event)" type="button">
                     <div class="btn-shutter-inner"></div>
                 </button>
             </div>
@@ -417,17 +524,14 @@ async def home():
                 }
             };
 
-            // =========================================================================
-            // 🌉 EL PUENTE NATIVO FLUTTER_INAPPWEBVIEW + REVENUECAT
-            // =========================================================================
+            // PASARELA DE PAGO CON PUENTE NATIVO FLUTTER_INAPPWEBVIEW
             window.suscribirse = async (plan) => {
-                // 1. SI ESTAMOS DENTRO DE LA APP NATIVA FLUTTER (Llamada al Handler)
                 if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
                     window.flutter_inappwebview.callHandler('FlutterPaymentChannel', plan);
                     return;
                 }
 
-                // 2. MODO DESARROLLO WEB (Si estás probando desde el navegador de PC)
+                // Fallback web
                 try {
                     const res = await authFetch('/usuario/suscribir', {
                         method: 'POST',
@@ -436,7 +540,7 @@ async def home():
                     });
                     const d = await res.json();
                     if (d.ok) {
-                        alert(`ℹ️ [Modo Web]: Activado CupónIA Premium (${plan.toUpperCase()}) en modo pruebas.`);
+                        alert(`ℹ️ [Suscripción Activada en Modo Pruebas].`);
                         window.cerrarPaywall();
                         await window.cargarSuscripcionUsuario();
                         await window.loadCoupons();
@@ -444,19 +548,6 @@ async def home():
                 } catch(e) {
                     alert("Error procesando suscripción");
                 }
-            };
-
-            // Función que llama Flutter desde Dart cuando RevenueCat confirma el pago
-            window.onFlutterPaymentSuccess = async (plan) => {
-                await authFetch('/usuario/suscribir', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plan: plan })
-                });
-                alert("🎉 ¡Pago verificado con Google Play y RevenueCat! Bienvenido a CupónIA Premium.");
-                window.cerrarPaywall();
-                await window.cargarSuscripcionUsuario();
-                await window.loadCoupons();
             };
 
             // LISTA DE LA COMPRA INTELIGENTE
@@ -697,7 +788,9 @@ async def home():
                 }
             };
 
-            // CÁMARA IN-APP WEBRTC
+            // =========================================================================
+            // CÁMARA IN-APP WEBRTC (CON FUNCIONES BLINDADAS)
+            // =========================================================================
             let cameraStream = null;
             let torchActive = false;
 
@@ -726,7 +819,10 @@ async def home():
                 }
             };
 
-            window.cerrarCamara = () => {
+            window.cerrarCamara = (e) => {
+                if (e) e.stopPropagation();
+                const modal = document.getElementById('cameraModal');
+                const video = document.getElementById('cameraVideo');
                 if (cameraStream) {
                     cameraStream.getTracks().forEach(track => track.stop());
                     cameraStream = null;
@@ -736,18 +832,25 @@ async def home():
                 torchActive = false;
             };
 
-            window.toggleTorch = async () => {
+            window.toggleTorch = async (e) => {
+                if (e) e.stopPropagation();
                 if (!cameraStream) return;
                 const track = cameraStream.getVideoTracks()[0];
                 if (!track) return;
                 const capabilities = track.getCapabilities ? track.getCapabilities() : {};
-                if (!capabilities.torch) return alert("Flash no disponible");
-                torchActive = !torchActive;
-                await track.applyConstraints({ advanced: [{ torch: torchActive }] });
-                document.getElementById('btnTorch').style.background = torchActive ? "#ffd54f" : "rgba(255,255,255,0.25)";
+                if (!capabilities.torch) return alert("Flash no disponible en este dispositivo");
+                
+                try {
+                    torchActive = !torchActive;
+                    await track.applyConstraints({ advanced: [{ torch: torchActive }] });
+                    document.getElementById('btnTorch').style.background = torchActive ? "#ffd54f" : "rgba(255,255,255,0.25)";
+                } catch(err) {
+                    console.log("Error linterna:", err);
+                }
             };
 
-            window.capturarFoto = () => {
+            window.capturarFoto = (e) => {
+                if (e) e.stopPropagation();
                 const video = document.getElementById('cameraVideo');
                 const canvas = document.getElementById('cameraCanvas');
                 const btn = document.getElementById('btnCapturar');
